@@ -87,3 +87,16 @@ def test_graphique_allure():
     assert list(fig.data[0].y) == pytest.approx([5.0, 15.0, 280 / 60])
     assert list(fig.data[1].x) == [0.15]  # seul le segment en marche est marqué
     assert fig.layout.yaxis.autorange == "reversed"
+
+
+def test_prises_avec_fenetre(trace):
+    plan = pd.DataFrame(
+        {
+            "heure": ["0:25"], "km": [2.0], "km_min": [1.5], "km_max": [2.8],
+            "fenetre": ["km 1.5 – 3"], "glucides_g": [25.0], "raison": ["portion roulante"],
+        }
+    )
+    marqueur = profil_altimetrique(trace, plan).data[1]
+    assert marqueur.error_x.arrayminus[0] == pytest.approx(0.5)  # fenêtre avant l'idéal
+    assert marqueur.error_x.array[0] == pytest.approx(0.8)       # fenêtre après l'idéal
+    assert marqueur.customdata[0][2] == "km 1.5 – 3"

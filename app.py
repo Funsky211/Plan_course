@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import time
 from pathlib import Path
 
@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from trailnutri.calibration import CalibrationError, calibrer
-from trailnutri.config import charger_config
+from trailnutri.config import ConfigError, charger_config, valider
 from trailnutri.gpx_loader import GpxError, construire_trace, denivele, lire_gpx
 from trailnutri.nutrition import NutritionError, exporter_csv, total_a_prevoir
 from trailnutri.pacing import PacingError, allure_plate, passages_par_km, temps_au_km
@@ -34,6 +34,9 @@ CURSEURS = {
     "delai_premiere_prise_min": (0, 30, 1),
     "temperature_c": (-10, 40, 1),
 }
+
+# Niveau affiché avec un symbole de couleur + son nom (jamais la couleur seule)
+ETIQUETTES_NIVEAU = {"facile": "🟢 facile", "modéré": "🟠 modéré", "dur": "🔴 dur"}
 
 st.set_page_config(page_title="trailnutri", layout="wide")
 
@@ -120,6 +123,19 @@ with st.sidebar:
         mini, maxi, pas = CURSEURS[nom]
         st.slider(libelle, mini, maxi, step=pas, key=nom, help=aide)
 
+    st.header("Réglages d'analyse")
+    seuil_modere = st.slider("Seuil « modéré »", 0.05, 0.60,
+                             float(CFG.difficulte.seuil_modere), step=0.01,
+                             help="Score de difficulté à partir duquel une zone est modérée.")
+    seuil_dur = st.slider("Seuil « dur »", 0.10, 0.90, float(CFG.difficulte.seuil_dur),
+                          step=0.01, help="Score à partir duquel une zone est dure.")
+    lissage_m = st.slider("Lissage du score (m)", 0, 1000,
+                          int(CFG.difficulte.lissage_fenetre_m), step=50,
+                          help="Moyenne glissante : plus large = zones plus stables.")
+    marge_min = st.slider("Marge autour des prises (± min)", 0, 15,
+                          int(CFG.decalage.fenetre_min), step=1,
+                          help="Décalage autorisé et largeur maximale de la fenêtre de prise.")
+
     st.subheader("Profil")
     st.download_button("Enregistrer le profil (JSON)", lire_profil().vers_json(),
                        file_name="profil_athlete.json", mime="application/json")
@@ -138,6 +154,17 @@ st.caption(
 )
 
 cfg = lire_profil().appliquer(CFG)
+cfg = replace(
+    cfg,
+    difficulte=replace(cfg.difficulte, seuil_modere=seuil_modere, seuil_dur=seuil_dur,
+                       lissage_fenetre_m=lissage_m),
+    decalage=replace(cfg.decalage, fenetre_min=marge_min),
+)
+try:
+    valider(cfg)
+except ConfigError as erreur:
+    st.error(f"Réglages d'analyse incohérents. {erreur}")
+    st.stop()
 temps_cible_s = heures * 3600 + minutes * 60
 
 try:
@@ -177,14 +204,21 @@ with onglets[0]:
         use_container_width=True,
     )
     st.subheader("Prises")
+    st.caption("Chaque prise a une fenêtre : plus étroite quand c'est dur, jamais en descente "
+               "technique ni en pleine montée dure. Le km idéal est indiqué en complément.")
     st.dataframe(
-        res.plan[["heure", "km", "d_plus_cumul_m", "glucides_g", "eau_ml", "sodium_mg",
-                  "raison"]],
+        res.plan.assign(niveau=res.plan["niveau"].map(ETIQUETTES_NIVEAU))[
+            ["fenetre", "heure_min", "heure_max", "glucides_g", "eau_ml", "sodium_mg", "niveau",
+             "km", "d_plus_cumul_m", "raison"]
+        ],
         hide_index=True,
         use_container_width=True,
         column_config={
-            "heure": "Heure",
-            "km": st.column_config.NumberColumn("Km", format="%.2f"),
+            "fenetre": "Prise recommandée",
+            "heure_min": "Entre",
+            "heure_max": "et",
+            "niveau": "Terrain",
+            "km": st.column_config.NumberColumn("Km idéal", format="%.2f"),
             "d_plus_cumul_m": st.column_config.NumberColumn("D+ cumulé (m)", format="%.0f"),
             "glucides_g": st.column_config.NumberColumn("Glucides (g)", format="%.0f"),
             "eau_ml": st.column_config.NumberColumn("Eau (ml)", format="%.0f"),
@@ -217,12 +251,23 @@ with onglets[1]:
 
 # --- Onglet Difficulté --------------------------------------------------------------------
 with onglets[2]:
-    st.write(f"**Zones** (modéré ≥ {cfg.difficulte.seuil_modere}, "
-             f"dur ≥ {cfg.difficulte.seuil_dur})")
-    st.dataframe(res.zones.round(2), hide_index=True, use_container_width=True)
+    st.write(f"**Zones** : facile < {cfg.difficulte.seuil_modere:.2f} ≤ modéré < "
+             f"{cfg.difficulte.seuil_dur:.2f} ≤ dur (score continu de 0 à 1, lissé)")
+    st.dataframe(
+        res.zones.assign(niveau=res.zones["niveau"].map(ETIQUETTES_NIVEAU)),
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "km_debut": st.column_config.NumberColumn("Du km", format="%.1f"),
+            "km_fin": st.column_config.NumberColumn("Au km", format="%.1f"),
+            "niveau": "Niveau",
+            "score_moyen": st.column_config.NumberColumn("Score moyen", format="%.2f"),
+            "score_max": st.column_config.NumberColumn("Score max", format="%.2f"),
+        },
+    )
+    st.caption("Détail par segment :")
     colonnes = ["debut_m", "fin_m", "pente", "mode", "allure_s_km", "difficulte", "niveau",
-                "f_montee",
-                "f_fatigue", "f_position", "f_descente", "f_enchainement", "f_creux"]
+                "f_montee", "f_fatigue", "f_position", "f_descente", "f_enchainement", "f_creux"]
     st.dataframe(res.segments[colonnes].round(3), hide_index=True, use_container_width=True)
 
 # --- Onglet Points d'intérêt --------------------------------------------------------------

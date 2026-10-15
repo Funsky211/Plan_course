@@ -59,27 +59,7 @@ def profil_altimetrique(
         _profil_par_niveau(fig, trace, segments)
 
     if plan is not None and not plan.empty:
-        # Marqueur posé sur le profil, à l'altitude du km de la prise
-        alt_prises = np.interp(plan["km"], km, alt)
-        fig.add_trace(
-            go.Scatter(
-                x=plan["km"],
-                y=alt_prises,
-                name="Prise de glucides",
-                mode="markers",
-                marker={
-                    "color": COULEUR_PRISE,
-                    "size": 11,
-                    "line": {"color": "white", "width": 2},  # anneau pour détacher du profil
-                },
-                customdata=plan[["heure", "glucides_g", "d_plus_cumul_m", "raison"]],
-                hovertemplate=(
-                    "<b>%{customdata[0]}</b> · %{customdata[1]:.0f} g de glucides<br>"
-                    "km %{x:.2f} · D+ %{customdata[2]:.0f} m<br>"
-                    "%{customdata[3]}<extra></extra>"
-                ),
-            )
-        )
+        _ajouter_prises(fig, plan, km, alt)
 
     for ravito in ravitos or []:
         fig.add_vline(
@@ -104,6 +84,38 @@ def profil_altimetrique(
         font={"color": COULEUR_TEXTE_SECONDAIRE},
     )
     return fig
+
+
+def _ajouter_prises(fig: go.Figure, plan: pd.DataFrame, km: pd.Series, alt: pd.Series) -> None:
+    """Un marqueur par prise au point idéal ; si le plan a des fenêtres (km_min / km_max),
+    une barre horizontale épaisse représente la fenêtre autour du point."""
+    avec_fenetres = "km_min" in plan
+    fenetre = plan["fenetre"] if avec_fenetres else plan["km"].map(lambda k: f"km {k:.1f}")
+    barre = None
+    if avec_fenetres:
+        barre = {
+            "type": "data", "symmetric": False,
+            "array": plan["km_max"] - plan["km"], "arrayminus": plan["km"] - plan["km_min"],
+            "color": COULEUR_PRISE, "thickness": 6, "width": 0,
+        }
+    fig.add_trace(
+        go.Scatter(
+            x=plan["km"],
+            y=np.interp(plan["km"], km, alt),  # posé sur le profil
+            name="Prise (et sa fenêtre)" if avec_fenetres else "Prise de glucides",
+            mode="markers",
+            marker={"color": COULEUR_PRISE, "size": 11,
+                    "line": {"color": "white", "width": 2}},  # anneau pour détacher du profil
+            error_x=barre,
+            customdata=list(zip(plan["heure"], plan["glucides_g"], fenetre, plan["raison"],
+                                strict=True)),
+            hovertemplate=(
+                "<b>%{customdata[0]}</b> · %{customdata[1]:.0f} g de glucides<br>"
+                "%{customdata[2]} (idéal km %{x:.2f})<br>"
+                "%{customdata[3]}<extra></extra>"
+            ),
+        )
+    )
 
 
 def _profil_par_niveau(fig: go.Figure, trace: pd.DataFrame, segments: pd.DataFrame) -> None:
