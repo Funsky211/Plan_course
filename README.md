@@ -13,8 +13,8 @@ ravitaillement (quand, où, quoi prendre, pourquoi à ce moment-là).
 
 ```bash
 py -3.10 -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt
-.venv/Scripts/python -m pip install -e .
+.venv/Scripts/python -m pip install --upgrade pip
+.venv/Scripts/python -m pip install -r requirements.txt   # installe aussi le package local (-e .)
 ```
 
 (Sous PowerShell / cmd, remplacer `/` par `\` ; avec le venv activé, `python` suffit.)

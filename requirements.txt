@@ -7,3 +7,4 @@ PyYAML==6.0.3
 streamlit==1.65.0
 pytest==9.1.1
 ruff==0.17.0
+-e .  # installe le package local trailnutri (src/), indispensable sur Streamlit Cloud
