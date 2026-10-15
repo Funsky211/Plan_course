@@ -15,6 +15,15 @@ py -3.10 -m venv .venv
 .venv\Scripts\python -m pip install -e .
 ```
 
+## Lancer l'interface
+
+```bash
+.venv\Scripts\python -m streamlit run app.py
+```
+
+Sans GPX importé, l'interface utilise `data/exemple.gpx`. Les réglages de la barre latérale
+surchargent `config.yaml` pour la session uniquement.
+
 ## Tests
 
 ```bash
@@ -31,5 +40,13 @@ py -3.10 -m venv .venv
    Refuse un temps cible impliquant une allure à plat hors de [2:30 ; 20:00] min/km.
 4. `nutrition` : une prise toutes les X min (après le délai de départ, jamais sur la ligne
    d'arrivée), quantité = g/h × X/60, km et D+ cumulé interpolés. Export CSV (`;`, décimale `,`).
+5. `plot` : profil altimétrique plotly avec marqueurs de prises (zones dures prévues).
+
+## Feuille de route
+
+- [x] MVP : GPX + segments + pacing, glucides à intervalle fixe, profil, interface Streamlit
+- [ ] Score de difficulté par segment et zones dures
+- [ ] Décalage des prises (avant montée, hors descente technique, ravitos officiels)
+- [ ] Export PDF
 
 Trace d'exemple : `data/exemple.gpx` (régénérable via `python scripts/generer_gpx_exemple.py`).
