@@ -60,6 +60,22 @@ nutrition:
   glucides_g_h_max: 90            # plafond accepté
   intervalle_min: 25              # une prise toutes les X minutes
   delai_premiere_prise_min: 15    # aucune prise avant ce délai
+  fraction_depart: 0.7            # montée en charge : on démarre à 70 % de la cible g/h...
+  montee_en_charge_min: 60        # ...et on l'atteint après X min (0 = désactivé)
+  max_unites_par_prise: 2         # au plus X produits avalés à la même prise
+  produits:                       # glucides par unité ; chaque prise prend la combinaison la plus proche
+    Gel: 25
+    Barre: 40
+    Pâte de fruits: 20
+
+hydratation:
+  temperature_c: 15               # température prévue (modifiable dans l'interface)
+  temperature_ref_c: 15
+  ml_h_base: 500                  # boisson par heure à la température de référence
+  ml_h_par_degre: 20              # + X ml/h par degré au-dessus de la référence
+  ml_h_min: 300
+  ml_h_max: 900
+  sodium_mg_par_litre: 500
 
 decalage:                         # déplacement de chaque prise dans une fenêtre autour de l'horaire de base
   fenetre_min: 6                  # ± X minutes autour de l'horaire de base

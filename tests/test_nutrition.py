@@ -5,7 +5,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from trailnutri.nutrition import NutritionError, exporter_csv, plan_glucides
+from trailnutri.nutrition import (
+    NutritionError,
+    choisir_produits,
+    debit_eau_ml_h,
+    debit_glucides_g_h,
+    exporter_csv,
+    liste_courses,
+    plan_glucides,
+)
 from trailnutri.waypoints import Ravito
 
 
@@ -21,9 +29,14 @@ def segments_temps(duree_totale_s: float, nb: int = 10, longueur: float = 1_000)
     )
 
 
+def fixe(cfg, **modif):
+    """Nutrition "brute" : sans montée en charge ni catalogue de produits (grammes exacts)."""
+    return replace(cfg.nutrition, **{"montee_en_charge_min": 0, "produits": {}, **modif})
+
+
 def test_horaires_et_quantites(cfg):
     # 2 h, une prise toutes les 25 min à 60 g/h -> 25, 50, 75, 100 min ; 25 g par prise
-    plan = plan_glucides(segments_temps(2 * 3600), cfg.nutrition)
+    plan = plan_glucides(segments_temps(2 * 3600), fixe(cfg))
     assert list(plan["temps_s"] / 60) == [25, 50, 75, 100]
     assert (plan["glucides_g"] == 25).all()
     assert list(plan["heure"]) == ["0:25", "0:50", "1:15", "1:40"]
@@ -38,7 +51,7 @@ def test_position_interpolee(cfg):
 
 
 def test_delai_premiere_prise(cfg):
-    nutri = replace(cfg.nutrition, intervalle_min=10, delai_premiere_prise_min=15)
+    nutri = fixe(cfg, intervalle_min=10, delai_premiere_prise_min=15)
     plan = plan_glucides(segments_temps(3600), nutri)
     # 10 min est dans le délai : première prise à 20 min
     assert plan["temps_s"].iloc[0] == 20 * 60
@@ -63,7 +76,12 @@ def test_heure_reelle(cfg):
 
 @pytest.mark.parametrize(
     "modif",
-    [{"glucides_g_h": 0}, {"glucides_g_h": 120}, {"intervalle_min": 0}, {"delai_premiere_prise_min": -5}],
+    [
+        {"glucides_g_h": 0},
+        {"glucides_g_h": 120},
+        {"intervalle_min": 0},
+        {"delai_premiere_prise_min": -5},
+    ],
 )
 def test_parametres_invalides(cfg, modif):
     with pytest.raises(NutritionError):
@@ -71,10 +89,73 @@ def test_parametres_invalides(cfg, modif):
 
 
 def test_export_csv(cfg):
-    csv = exporter_csv(plan_glucides(segments_temps(100 * 60), cfg.nutrition))
+    csv = exporter_csv(plan_glucides(segments_temps(100 * 60), fixe(cfg)))
     lignes = csv.strip().splitlines()
-    assert lignes[0] == "heure;km;d_plus_cumul_m;glucides_g;raison"
-    assert lignes[1] == "0:25;2,5;25,0;25,0;intervalle fixe"
+    assert lignes[0] == "heure;km;d_plus_cumul_m;a_prendre;glucides_g;raison"
+    assert lignes[1] == "0:25;2,5;25,0;25 g de glucides;25,0;intervalle fixe"
+
+
+# --- Quantités : montée en charge, produits, hydratation ------------------------------------
+
+def test_montee_en_charge(cfg):
+    # 70 % de 60 g/h au départ, 60 g/h à partir de 60 min
+    assert debit_glucides_g_h(0, cfg.nutrition) == pytest.approx(42)
+    assert debit_glucides_g_h(30 * 60, cfg.nutrition) == pytest.approx(51)
+    assert debit_glucides_g_h(3 * 3600, cfg.nutrition) == pytest.approx(60)
+    assert debit_glucides_g_h(0, fixe(cfg)) == 60
+
+
+def test_cibles_croissantes_puis_stables(cfg):
+    plan = plan_glucides(segments_temps(3 * 3600), replace(cfg.nutrition, produits={}))
+    cibles = plan["glucides_cible_g"].to_numpy()
+    assert (np.diff(cibles) >= 0).all()
+    assert cibles[-1] == pytest.approx(25)  # 60 g/h x 25 min
+    assert cibles[0] < 25
+
+
+@pytest.mark.parametrize(
+    "cible, unites, total",
+    [
+        (25, ("Gel",), 25),
+        (19, ("Pâte de fruits",), 20),
+        (45, ("Gel", "Pâte de fruits"), 45),
+        (50, ("Gel", "Gel"), 50),
+        (38, ("Barre",), 40),  # à écart égal (2 g), 1 Barre plutôt que 2 Pâtes de fruits
+    ],
+)
+def test_choisir_produits(cfg, cible, unites, total):
+    assert choisir_produits(cible, cfg.nutrition.produits, 2) == (unites, total)
+
+
+def test_choisir_produits_sans_catalogue():
+    assert choisir_produits(27.5, {}, 2) == ((), 27.5)
+
+
+def test_hydratation(cfg):
+    h = cfg.hydratation
+    assert debit_eau_ml_h(h) == 500
+    assert debit_eau_ml_h(replace(h, temperature_c=25)) == 700
+    assert debit_eau_ml_h(replace(h, temperature_c=40)) == h.ml_h_max
+    assert debit_eau_ml_h(replace(h, temperature_c=-10)) == h.ml_h_min
+
+    plan = plan_glucides(segments_temps(2 * 3600), cfg.nutrition, hydratation=h)
+    # 500 ml/h x 25 min = 208 -> arrondi 210 ml ; 500 mg/L -> 105 mg
+    assert (plan["eau_ml"] == 210).all()
+    assert (plan["sodium_mg"] == 105).all()
+
+
+def test_liste_courses(cfg):
+    plan = plan_glucides(segments_temps(2 * 3600), fixe(cfg, produits={"Gel": 25}),
+                         hydratation=cfg.hydratation)
+    liste = liste_courses(plan).set_index("article")
+    assert liste.loc["Gel", "quantite"] == 4
+    assert liste.loc["Eau", "quantite"] == pytest.approx(0.8)
+    assert liste.loc["Sodium", "quantite"] == 420
+
+
+def test_produit_invalide(cfg):
+    with pytest.raises(NutritionError):
+        plan_glucides(segments_temps(3600), replace(cfg.nutrition, produits={"Gel": 0}))
 
 
 # --- Décalage des prises -------------------------------------------------------------------

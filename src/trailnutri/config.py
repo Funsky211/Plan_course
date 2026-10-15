@@ -70,6 +70,21 @@ class NutritionConfig:
     glucides_g_h_max: float
     intervalle_min: float
     delai_premiere_prise_min: float
+    fraction_depart: float
+    montee_en_charge_min: float
+    max_unites_par_prise: int
+    produits: dict[str, float]
+
+
+@dataclass(frozen=True)
+class HydratationConfig:
+    temperature_c: float
+    temperature_ref_c: float
+    ml_h_base: float
+    ml_h_par_degre: float
+    ml_h_min: float
+    ml_h_max: float
+    sodium_mg_par_litre: float
 
 
 @dataclass(frozen=True)
@@ -98,6 +113,7 @@ class Config:
     difficulte: DifficulteConfig
     nutrition: NutritionConfig
     decalage: DecalageConfig
+    hydratation: HydratationConfig
 
 
 def charger_config(chemin: str | Path | None = None) -> Config:
@@ -114,4 +130,5 @@ def charger_config(chemin: str | Path | None = None) -> Config:
         difficulte=DifficulteConfig(**brut["difficulte"]),
         nutrition=NutritionConfig(**brut["nutrition"]),
         decalage=DecalageConfig(**brut["decalage"]),
+        hydratation=HydratationConfig(**brut["hydratation"]),
     )
