@@ -17,6 +17,7 @@ import pandas as pd
 
 from trailnutri.config import CourseConfig, WaypointsConfig
 from trailnutri.gpx_loader import distance_haversine
+from trailnutri.outils import plages
 from trailnutri.temps import lire_hmm, secondes_depuis_depart
 
 # "14h30", "14h", "14:30" dans le nom ou la description d'une barrière
@@ -173,7 +174,7 @@ def _passages_sur_trace(
 
     passages: list[tuple[float, float]] = []
     # Chaque plage continue de points proches = un passage ; on garde le point le plus proche
-    for debut, fin in _plages(proche):
+    for debut, fin in plages(proche):
         i = debut + int(np.argmin(ecart[debut : fin + 1]))
         km, e = distance[i] / 1000, float(ecart[i])
         # Deux plages trop rapprochées = un seul passage (bruit GPS en bord de rayon)
@@ -183,14 +184,6 @@ def _passages_sur_trace(
             continue
         passages.append((km, e))
     return passages
-
-
-def _plages(masque: np.ndarray) -> list[tuple[int, int]]:
-    """Indices (début, fin inclus) des suites de True consécutifs."""
-    bords = np.diff(np.concatenate([[0], masque.astype(int), [0]]))
-    debuts = np.flatnonzero(bords == 1)
-    fins = np.flatnonzero(bords == -1) - 1
-    return list(zip(debuts.tolist(), fins.tolist()))
 
 
 def _normaliser(texte: str) -> str:

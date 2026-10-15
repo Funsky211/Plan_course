@@ -35,6 +35,26 @@ pacing:
   allure_plate_min_s_km: 150      # 2:30 min/km : en dessous, temps cible jugé irréaliste
   allure_plate_max_s_km: 1200     # 20:00 min/km : au-dessus, temps cible jugé irréaliste
 
+difficulte:
+  poids:                          # somme pondérée, renormalisée pour rester entre 0 et 1
+    montee: 0.30                  # montée soutenue
+    fatigue: 0.15                 # temps écoulé
+    position: 0.10                # dernier tiers de la course
+    descente: 0.15                # descente technique
+    enchainement: 0.15            # montées dures sans récupération
+    creux: 0.15                   # creux physiologique
+  montee_pente_min: 0.08          # une montée est "soutenue" au-dessus de 8 %...
+  montee_longueur_min_m: 500      # ...sur au moins 500 m
+  montee_tolerance_m: 150         # un replat plus court que ça ne coupe pas la montée
+  montee_pente_max: 0.25          # pente qui donne le score maximal (1)
+  descente_pente_seuil: -0.12     # descente technique sous -12 %
+  descente_pente_max: -0.30       # pente qui donne le score maximal (1)
+  position_debut_fraction: 0.667  # le "dernier tiers" commence à 66.7 % de la distance
+  enchainement_recup_m: 1500      # moins de X m entre deux montées dures = pas de récupération
+  creux_debut_h: 2.5              # fenêtre du creux physiologique
+  creux_fin_h: 4.0
+  seuil_zone_dure: 0.30           # score au-dessus duquel un segment est en "zone dure"
+
 nutrition:
   glucides_g_h: 60                # cible de glucides par heure
   glucides_g_h_max: 90            # plafond accepté

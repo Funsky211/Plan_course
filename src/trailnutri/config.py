@@ -49,6 +49,22 @@ class PacingConfig:
 
 
 @dataclass(frozen=True)
+class DifficulteConfig:
+    poids: dict[str, float]
+    montee_pente_min: float
+    montee_longueur_min_m: float
+    montee_tolerance_m: float
+    montee_pente_max: float
+    descente_pente_seuil: float
+    descente_pente_max: float
+    position_debut_fraction: float
+    enchainement_recup_m: float
+    creux_debut_h: float
+    creux_fin_h: float
+    seuil_zone_dure: float
+
+
+@dataclass(frozen=True)
 class NutritionConfig:
     glucides_g_h: float
     glucides_g_h_max: float
@@ -63,6 +79,7 @@ class Config:
     waypoints: WaypointsConfig
     segments: SegmentsConfig
     pacing: PacingConfig
+    difficulte: DifficulteConfig
     nutrition: NutritionConfig
 
 
@@ -77,5 +94,6 @@ def charger_config(chemin: str | Path | None = None) -> Config:
         waypoints=WaypointsConfig(**brut["waypoints"]),
         segments=SegmentsConfig(**brut["segments"]),
         pacing=PacingConfig(**brut["pacing"]),
+        difficulte=DifficulteConfig(**brut["difficulte"]),
         nutrition=NutritionConfig(**brut["nutrition"]),
     )
