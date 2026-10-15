@@ -173,7 +173,7 @@ onglets = st.tabs(
 # --- Onglet Plan --------------------------------------------------------------------------
 with onglets[0]:
     st.plotly_chart(
-        profil_altimetrique(trace, res.plan, res.zones_dures, res.ravitos),
+        profil_altimetrique(trace, res.plan, res.segments, res.ravitos),
         use_container_width=True,
     )
     st.subheader("Prises")
@@ -217,9 +217,11 @@ with onglets[1]:
 
 # --- Onglet Difficulté --------------------------------------------------------------------
 with onglets[2]:
-    zones = ", ".join(f"km {a:.1f}–{b:.1f}" for a, b in res.zones_dures) or "aucune"
-    st.write(f"**Zones dures** (score ≥ {cfg.difficulte.seuil_dur}) : {zones}")
-    colonnes = ["debut_m", "fin_m", "pente", "mode", "allure_s_km", "difficulte", "f_montee",
+    st.write(f"**Zones** (modéré ≥ {cfg.difficulte.seuil_modere}, "
+             f"dur ≥ {cfg.difficulte.seuil_dur})")
+    st.dataframe(res.zones.round(2), hide_index=True, use_container_width=True)
+    colonnes = ["debut_m", "fin_m", "pente", "mode", "allure_s_km", "difficulte", "niveau",
+                "f_montee",
                 "f_fatigue", "f_position", "f_descente", "f_enchainement", "f_creux"]
     st.dataframe(res.segments[colonnes].round(3), hide_index=True, use_container_width=True)
 

@@ -11,7 +11,7 @@ from datetime import time
 import pandas as pd
 
 from trailnutri.config import Config
-from trailnutri.difficulty import calculer_difficulte, zones_dures
+from trailnutri.difficulty import calculer_difficulte, zones
 from trailnutri.nutrition import plan_glucides
 from trailnutri.pacing import calculer_temps, verifier_barrieres
 from trailnutri.segments import decouper_segments
@@ -31,7 +31,7 @@ class Resultat:
     segments: pd.DataFrame          # temps + difficulté par segment
     plan: pd.DataFrame              # prises de glucides / eau
     barrieres: pd.DataFrame         # contrôle des barrières horaires
-    zones_dures: list[tuple[float, float]]
+    zones: pd.DataFrame             # zones de difficulté (facile / modéré / dur)
     ravitos: list[Ravito]
 
 
@@ -78,6 +78,6 @@ def planifier(
         segments=segments,
         plan=plan,
         barrieres=verifier_barrieres(segments, barrieres or []),
-        zones_dures=zones_dures(segments),
+        zones=zones(segments),
         ravitos=ravitos,
     )

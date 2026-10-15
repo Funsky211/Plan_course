@@ -69,7 +69,10 @@ difficulte:                       # score continu entre 0 et 1 (courbes, pas de 
   enchainement_recup_m: 1500      # récupération à partir de laquelle une montée n'"enchaîne" plus
   lissage_fenetre_m: 400          # moyenne glissante du score (0 = pas de lissage)
   seuil_contrainte: 0.5           # facteur montée/descente au-delà duquel on évite d'y manger
-  seuil_dur: 0.65                 # score à partir duquel un segment est "dur"
+  seuil_modere: 0.22              # niveaux : facile < 0.22 <= modéré < 0.38 <= dur
+  seuil_dur: 0.38                 # (calés sur la distribution réelle des scores)
+  zone_longueur_min_m: 300        # une zone plus courte est absorbée par sa voisine
+  hysteresis: 0.02                # changer de niveau exige de dépasser le seuil de 0.02
 
 nutrition:
   glucides_g_h: 60                # cible de glucides par heure

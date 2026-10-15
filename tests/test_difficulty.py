@@ -4,7 +4,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from trailnutri.difficulty import calculer_difficulte, distance_montee_continue, lisser
+from trailnutri.difficulty import (
+    _niveaux_par_zone,
+    calculer_difficulte,
+    distance_montee_continue,
+    lisser,
+    niveau,
+    niveaux_hysteresis,
+    zones,
+)
 
 FACTEURS = ["montee", "fatigue", "position", "descente", "enchainement", "creux"]
 
@@ -135,3 +143,92 @@ def test_poids_normalises(cfg):
     a = calculer_difficulte(seg, cfg.difficulte)["difficulte"]
     b = calculer_difficulte(seg, double)["difficulte"]
     assert a.to_numpy() == pytest.approx(b.to_numpy())
+
+
+# --- Niveaux et zones ----------------------------------------------------------------------
+
+def test_niveau_aux_seuils(cfg):
+    d = cfg.difficulte  # modéré à partir de 0.22, dur à partir de 0.38
+    scores = [0.0, 0.2199, 0.22, 0.3799, 0.38, 1.0]
+    assert list(niveau(scores, d)) == ["facile", "facile", "modéré", "modéré", "dur", "dur"]
+
+
+def avec_scores(scores, longueur: float = 100) -> pd.DataFrame:
+    """Segments dont le score lissé est imposé (pour tester niveaux et zones seuls)."""
+    seg = segments_test(np.zeros(len(scores)), longueur=longueur)
+    seg["difficulte"] = scores
+    return seg
+
+
+def test_zones_fusion_et_statistiques(cfg):
+    scores = [0.1] * 5 + [0.3] * 5 + [0.5] * 4 + [0.1] * 6
+    seg = avec_scores(scores)
+    seg["niveau"] = _niveaux_par_zone(seg, cfg.difficulte)
+    z = zones(seg)
+    assert list(z["niveau"]) == ["facile", "modéré", "dur", "facile"]
+    assert list(z["km_debut"]) == pytest.approx([0, 0.5, 1.0, 1.4])
+    assert list(z["km_fin"]) == pytest.approx([0.5, 1.0, 1.4, 2.0])
+    assert z.loc[2, "score_moyen"] == pytest.approx(0.5)
+    assert (z["score_max"] >= z["score_moyen"] - 1e-12).all()
+
+
+def test_pic_isole_absorbe(cfg):
+    # Un seul segment "dur" (100 m) au milieu du facile : pas de zone qui clignote
+    scores = [0.1] * 10 + [0.6] + [0.1] * 10
+    seg = avec_scores(scores)
+    assert set(_niveaux_par_zone(seg, cfg.difficulte)) == {"facile"}
+
+
+def test_zone_courte_rejoint_la_voisine_la_plus_proche(cfg):
+    # 200 m de "modéré" (0.36) entre du facile (0.1) et du dur (0.5) : rejoint le dur
+    scores = [0.1] * 5 + [0.36] * 2 + [0.5] * 5
+    seg = avec_scores(scores)
+    niveaux = _niveaux_par_zone(seg, cfg.difficulte)
+    assert list(niveaux[5:7]) == ["dur", "dur"]
+
+
+@pytest.mark.parametrize("graine", range(5))
+def test_aucune_zone_trop_courte(cfg, graine):
+    # Scores bruités : toutes les zones font au moins la longueur minimale, et elles se suivent
+    rng = np.random.default_rng(graine)
+    seg = avec_scores(np.clip(rng.normal(0.3, 0.15, 120), 0, 1))
+    seg["niveau"] = _niveaux_par_zone(seg, cfg.difficulte)
+    z = zones(seg)
+    longueurs_m = (z["km_fin"] - z["km_debut"]) * 1000
+    assert (longueurs_m >= cfg.difficulte.zone_longueur_min_m - 1e-6).all() or len(z) == 1
+    assert z["km_debut"].iloc[0] == 0 and z["km_fin"].iloc[-1] == pytest.approx(12.0)
+    assert (z["km_debut"].iloc[1:].to_numpy() == pytest.approx(z["km_fin"].iloc[:-1].to_numpy()))
+    assert (z["niveau"].iloc[1:].to_numpy() != z["niveau"].iloc[:-1].to_numpy()).all()
+
+
+def test_course_plus_courte_que_le_minimum(cfg):
+    seg = avec_scores([0.1, 0.5])
+    assert len(set(_niveaux_par_zone(seg, cfg.difficulte))) == 1
+
+
+def test_niveau_dans_calculer_difficulte(cfg):
+    seg = calculer_difficulte(segments_test([0.0] * 10 + [0.15] * 20), cfg.difficulte)
+    assert set(seg["niveau"]) <= {"facile", "modéré", "dur"}
+    assert len(zones(seg)) >= 1
+
+
+def test_hysteresis_evite_l_alternance(cfg):
+    # Score qui oscille autour du seuil modéré (0.22) : un seul niveau, pas d'alternance
+    scores = np.array([0.21, 0.23] * 20)
+    assert len(set(niveaux_hysteresis(scores, cfg.difficulte))) == 1
+    # Sans hystérésis, les niveaux alternent bien à chaque segment
+    sans = replace(cfg.difficulte, hysteresis=0)
+    assert len(set(niveaux_hysteresis(scores, sans))) == 2
+
+
+def test_hysteresis_franchissement_net(cfg):
+    # Un franchissement net (au-delà de la marge) change bien le niveau, dans les deux sens
+    scores = np.array([0.1] * 5 + [0.30] * 5 + [0.45] * 5 + [0.30] * 5 + [0.1] * 5)
+    niveaux = list(niveaux_hysteresis(scores, cfg.difficulte))
+    assert niveaux[::5] == ["facile", "modéré", "dur", "modéré", "facile"]
+
+
+def test_sans_hysteresis_egal_niveau_brut(cfg):
+    sans = replace(cfg.difficulte, hysteresis=0)
+    scores = np.random.default_rng(1).uniform(0, 1, 200)
+    assert list(niveaux_hysteresis(scores, sans)) == list(niveau(scores, sans))

@@ -40,15 +40,37 @@ def test_plan_vide_ignore(trace):
     assert len(profil_altimetrique(trace, plan).data) == 1
 
 
-def test_zones_dures(trace):
-    fig = profil_altimetrique(trace, zones_dures=[(1.0, 2.0), (3.5, 4.0)])
-    assert len(fig.layout.shapes) == 2
+def segments_niveaux(niveaux: list[str], longueur: float = 500) -> pd.DataFrame:
+    """Segments de 500 m avec un niveau et un score, couvrant la trace de 5 km."""
+    debut = np.arange(len(niveaux)) * longueur
+    score = {"facile": 0.1, "modéré": 0.3, "dur": 0.5}
+    return pd.DataFrame(
+        {
+            "debut_m": debut,
+            "fin_m": debut + longueur,
+            "difficulte": [score[n] for n in niveaux],
+            "niveau": niveaux,
+        }
+    )
 
 
-def test_ravitos_et_legende_zones(trace):
-    fig = profil_altimetrique(trace, zones_dures=[(1.0, 2.0)], ravitos=[Ravito(2.5, "Col")])
-    assert "Zone dure" in [t.name for t in fig.data]
-    assert len(fig.layout.shapes) == 2  # la zone + la ligne du ravito
+def test_profil_colore_par_niveau(trace):
+    niveaux = ["facile"] * 4 + ["dur"] * 2 + ["modéré"] * 2 + ["facile"] * 2
+    fig = profil_altimetrique(trace, segments=segments_niveaux(niveaux))
+    # Une portion par zone (4 zones), une entrée de légende par niveau (3)
+    assert [t.legendgroup for t in fig.data] == ["facile", "dur", "modéré", "facile"]
+    assert sum(t.showlegend is not False for t in fig.data) == 3
+    # Pas de trou : deux portions voisines partagent leur point de jonction
+    assert fig.data[0].x[-1] == fig.data[1].x[0] == pytest.approx(2.0)
+    # Survol : score numérique (interpolé, donc continu aux jonctions) et niveau
+    milieu = len(fig.data[1].x) // 2  # km 2.5, au coeur de la zone dure
+    assert fig.data[1].customdata[milieu][0] == pytest.approx(0.5)
+    assert fig.data[1].customdata[milieu][1] == "dur"
+
+
+def test_ravitos(trace):
+    fig = profil_altimetrique(trace, ravitos=[Ravito(2.5, "Col")])
+    assert len(fig.layout.shapes) == 1
     assert fig.layout.annotations[0].text == "Col"
 
 

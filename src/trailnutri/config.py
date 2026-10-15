@@ -95,8 +95,13 @@ class DifficulteConfig:
     lissage_fenetre_m: float = 400.0
     # Facteur montée / descente au-dessus duquel le placement des prises l'évite
     seuil_contrainte: float = 0.5
-    # Score au-dessus duquel un segment est "dur"
-    seuil_dur: float = 0.65
+    # Niveaux : facile < seuil_modere <= modéré < seuil_dur <= dur
+    seuil_modere: float = 0.22
+    seuil_dur: float = 0.38
+    # Une zone plus courte est absorbée par sa voisine (évite les zones qui clignotent)
+    zone_longueur_min_m: float = 300.0
+    # Hystérésis : pour changer de niveau, le score doit dépasser le seuil de cette marge
+    hysteresis: float = 0.02
 
 
 # Clés d'anciennes versions de config.yaml, acceptées puis ignorées (compatibilité)
@@ -205,7 +210,12 @@ def valider(cfg: Config) -> None:
          "difficulte : 0 <= position_debut < position_fin <= 1"),
         (cfg.difficulte.lissage_fenetre_m >= 0, "difficulte.lissage_fenetre_m doit être >= 0"),
         (0 < cfg.difficulte.seuil_contrainte < 1, "difficulte.seuil_contrainte dans ]0, 1["),
-        (0 < cfg.difficulte.seuil_dur <= 1, "difficulte.seuil_dur dans ]0, 1]"),
+        (0 < cfg.difficulte.seuil_modere < cfg.difficulte.seuil_dur <= 1,
+         "difficulte : 0 < seuil_modere < seuil_dur <= 1"),
+        (cfg.difficulte.zone_longueur_min_m >= 0, "difficulte.zone_longueur_min_m doit être >= 0"),
+        (0 <= cfg.difficulte.hysteresis
+         < (cfg.difficulte.seuil_dur - cfg.difficulte.seuil_modere) / 2,
+         "difficulte.hysteresis dans [0, (seuil_dur - seuil_modere) / 2["),
         (0 < cfg.nutrition.glucides_g_h <= cfg.nutrition.glucides_g_h_max,
          "nutrition : 0 < glucides_g_h <= glucides_g_h_max"),
         (cfg.nutrition.intervalle_min > 0, "nutrition.intervalle_min doit être > 0"),

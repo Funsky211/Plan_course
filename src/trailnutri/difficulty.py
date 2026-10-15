@@ -1,8 +1,11 @@
-"""Score de difficulté continu par segment (0 à 1).
+"""Score de difficulté continu par segment (0 à 1), niveaux et zones.
 
 Six facteurs, chacun calculé par une courbe continue (curves.py) plutôt qu'un seuil dur,
 combinés par une moyenne pondérée (poids dans config.yaml), puis lissés sur quelques
 centaines de mètres pour éviter les sauts brusques entre segments.
+
+Le score est ensuite converti en 3 niveaux (facile / modéré / dur) et les segments
+consécutifs de même niveau sont regroupés en zones d'une longueur minimale.
 """
 
 from __future__ import annotations
@@ -15,12 +18,15 @@ from trailnutri.config import DifficulteConfig
 from trailnutri.curves import gaussian_window, ramp, sigmoid
 from trailnutri.outils import plages
 
+NIVEAUX = ("facile", "modéré", "dur")
+
 
 def calculer_difficulte(segments: pd.DataFrame, cfg: DifficulteConfig) -> pd.DataFrame:
     """Ajoute à la sortie de calculer_temps les colonnes :
 
     f_<facteur> (0-1) pour chacun des FACTEURS, difficulte_brute, difficulte (lissée),
-    montee_dure et descente_technique (booléens utilisés pour placer les prises), zone_dure.
+    montee_dure et descente_technique (booléens utilisés pour placer les prises),
+    niveau (facile / modéré / dur, après absorption des zones trop courtes).
     """
     seg = segments.copy()
     pente = seg["pente"].to_numpy()
@@ -56,7 +62,7 @@ def calculer_difficulte(segments: pd.DataFrame, cfg: DifficulteConfig) -> pd.Dat
     facteurs = seg[[f"f_{f}" for f in FACTEURS]].to_numpy()
     seg["difficulte_brute"] = facteurs @ poids / poids.sum()
     seg["difficulte"] = lisser(seg["difficulte_brute"], longueur, cfg.lissage_fenetre_m)
-    seg["zone_dure"] = seg["difficulte"] >= cfg.seuil_dur
+    seg["niveau"] = _niveaux_par_zone(seg, cfg)
     return seg
 
 
@@ -82,12 +88,89 @@ def lisser(score: pd.Series, longueur: np.ndarray, fenetre_m: float) -> pd.Serie
     return score.rolling(n, center=True, min_periods=1).mean()
 
 
-def zones_dures(segments: pd.DataFrame) -> list[tuple[float, float]]:
-    """Intervalles (km_debut, km_fin) des segments consécutifs en zone dure."""
-    return [
-        (segments["debut_m"].iloc[d] / 1000, segments["fin_m"].iloc[f] / 1000)
-        for d, f in plages(segments["zone_dure"].to_numpy())
-    ]
+def niveau(score: float | np.ndarray, cfg: DifficulteConfig) -> np.ndarray:
+    """Score continu -> 'facile' / 'modéré' / 'dur' selon seuil_modere et seuil_dur."""
+    score = np.asarray(score, dtype=float)
+    return np.select(
+        [score >= cfg.seuil_dur, score >= cfg.seuil_modere], [NIVEAUX[2], NIVEAUX[1]], NIVEAUX[0]
+    )
+
+
+def zones(segments: pd.DataFrame) -> pd.DataFrame:
+    """Segments consécutifs de même niveau regroupés : km_debut, km_fin, niveau,
+    score_moyen (pondéré par la longueur) et score_max."""
+    lignes = []
+    for debut, fin, niv in _plages_par_niveau(segments["niveau"].to_numpy()):
+        morceau = segments.iloc[debut : fin + 1]
+        lignes.append(
+            {
+                "km_debut": morceau["debut_m"].iloc[0] / 1000,
+                "km_fin": morceau["fin_m"].iloc[-1] / 1000,
+                "niveau": niv,
+                "score_moyen": float(np.average(morceau["difficulte"],
+                                                weights=morceau["longueur_m"])),
+                "score_max": float(morceau["difficulte"].max()),
+            }
+        )
+    return pd.DataFrame(
+        lignes, columns=["km_debut", "km_fin", "niveau", "score_moyen", "score_max"]
+    )
+
+
+def niveaux_hysteresis(score: np.ndarray, cfg: DifficulteConfig) -> np.ndarray:
+    """Niveaux le long de la course, avec hystérésis.
+
+    On part du niveau du premier segment ; on ne monte d'un niveau que si le score dépasse
+    le seuil + hysteresis, et on ne redescend que s'il passe sous le seuil - hysteresis.
+    Un score qui oscille autour d'un seuil ne fait donc pas alterner les niveaux.
+    """
+    seuils = (cfg.seuil_modere, cfg.seuil_dur)
+    h = cfg.hysteresis
+    rang = int(np.searchsorted(seuils, score[0], side="right"))  # 0, 1 ou 2
+    rangs = np.empty(len(score), dtype=int)
+    for i, s in enumerate(score):
+        while rang < 2 and s >= seuils[rang] + h:
+            rang += 1
+        while rang > 0 and s < seuils[rang - 1] - h:
+            rang -= 1
+        rangs[i] = rang
+    return np.array(NIVEAUX, dtype=object)[rangs]
+
+
+def _niveaux_par_zone(seg: pd.DataFrame, cfg: DifficulteConfig) -> np.ndarray:
+    """Niveau de chaque segment : hystérésis, puis absorption des zones trop courtes.
+
+    Tant qu'il reste une zone plus courte que le minimum : la plus courte prend le niveau de
+    sa voisine dont le score moyen est le plus proche du sien (un pic isolé ne crée pas de zone).
+    """
+    niveaux = niveaux_hysteresis(seg["difficulte"].to_numpy(), cfg)
+    debut_m, fin_m = seg["debut_m"].to_numpy(), seg["fin_m"].to_numpy()
+    score = seg["difficulte"].to_numpy()
+
+    while True:
+        morceaux = _plages_par_niveau(niveaux)
+        longueurs = [fin_m[f] - debut_m[d] for d, f, _ in morceaux]
+        courts = [i for i, lg in enumerate(longueurs) if lg < cfg.zone_longueur_min_m]
+        if len(morceaux) <= 1 or not courts:
+            return niveaux
+        i = min(courts, key=lambda k: longueurs[k])
+        d, f, _ = morceaux[i]
+        moyenne = score[d : f + 1].mean()
+        voisins = [k for k in (i - 1, i + 1) if 0 <= k < len(morceaux)]
+        k = min(voisins, key=lambda v: abs(
+            score[morceaux[v][0] : morceaux[v][1] + 1].mean() - moyenne))
+        niveaux[d : f + 1] = morceaux[k][2]
+
+
+def _plages_par_niveau(niveaux: np.ndarray) -> list[tuple[int, int, str]]:
+    """(début, fin inclus, niveau) des suites de segments de même niveau."""
+    resultat: list[tuple[int, int, str]] = []
+    for i, niv in enumerate(niveaux):
+        if resultat and resultat[-1][2] == niv:
+            resultat[-1] = (resultat[-1][0], i, niv)
+        else:
+            resultat.append((i, i, str(niv)))
+    return resultat
 
 
 def _enchainement(seg: pd.DataFrame, cfg: DifficulteConfig) -> np.ndarray:
