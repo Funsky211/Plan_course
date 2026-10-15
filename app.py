@@ -17,7 +17,7 @@ from trailnutri.nutrition import NutritionError, exporter_csv, liste_courses
 from trailnutri.pacing import PacingError, allure_plate, passages_par_km, temps_au_km
 from trailnutri.pipeline import Resultat, planifier, rassembler_points
 from trailnutri.plot import graphique_allure, profil_altimetrique
-from trailnutri.profil import ProfilAthlete, ProfilError, produits_depuis_saisie
+from trailnutri.profil import ProfilAthlete, ProfilError
 from trailnutri.segments import decouper_segments
 from trailnutri.temps import formater_hmm, formater_mmss
 from trailnutri.waypoints import extraire_pois, parser_barrieres, parser_ravitos
@@ -47,36 +47,19 @@ def ajuster_au_curseur(nom: str, valeur: float) -> float:
     return type(mini)(round(round((valeur - mini) / pas) * pas + mini, 2))
 
 
-def tableau_produits(produits: dict[str, float]) -> pd.DataFrame:
-    """Produits perso au format du tableau modifiable (colonnes nom, glucides_g)."""
-    return pd.DataFrame(
-        {"nom": pd.Series(list(produits), dtype="object"),
-         "glucides_g": pd.Series(list(produits.values()), dtype="float")}
-    )
-
-
 def ecrire_profil(profil: ProfilAthlete) -> None:
     """Pousse un profil dans les curseurs, en respectant leurs bornes et types."""
     for nom, valeur in asdict(profil).items():
         if nom in CURSEURS:
-            st.session_state[nom] = ajuster_au_curseur(nom, valeur)
+            valeur = ajuster_au_curseur(nom, valeur)
         elif nom == "produits":
-            # Produit du catalogue (même nom, même valeur) -> case cochée ; sinon produit perso
-            catalogue = CFG.nutrition.produits
-            defaut = [n for n, g in valeur.items() if catalogue.get(n) == g]
-            st.session_state["produits"] = defaut
-            st.session_state["produits_perso"] = tableau_produits(
-                {n: g for n, g in valeur.items() if n not in defaut}
-            )
-            # Nouvelle clé = le tableau repart de ces données (sinon il garde ses anciennes saisies)
-            st.session_state["version_tableau"] = st.session_state.get("version_tableau", 0) + 1
-        else:
-            st.session_state[nom] = valeur
+            valeur = [p for p in valeur if p in CFG.nutrition.produits]
+        st.session_state[nom] = valeur
 
 
-def lire_profil(produits: dict[str, float]) -> ProfilAthlete:
-    champs = [nom for nom in ProfilAthlete.__dataclass_fields__ if nom != "produits"]
-    return ProfilAthlete(produits=produits, **{nom: st.session_state[nom] for nom in champs})
+def lire_profil() -> ProfilAthlete:
+    champs = ProfilAthlete.__dataclass_fields__
+    return ProfilAthlete(**{nom: st.session_state[nom] for nom in champs})
 
 
 def charger_profil_json() -> None:
@@ -85,8 +68,7 @@ def charger_profil_json() -> None:
     if fichier is None:
         return
     try:
-        texte = fichier.getvalue().decode("utf-8")
-        ecrire_profil(ProfilAthlete.depuis_json(texte, catalogue=CFG.nutrition.produits))
+        ecrire_profil(ProfilAthlete.depuis_json(fichier.getvalue().decode("utf-8")))
         st.session_state["message_profil"] = ("ok", "Profil chargé.")
     except (ProfilError, UnicodeDecodeError) as erreur:
         st.session_state["message_profil"] = ("erreur", str(erreur))
@@ -141,39 +123,12 @@ with st.sidebar:
     ]:
         mini, maxi, pas = CURSEURS[nom]
         st.slider(libelle, mini, maxi, step=pas, key=nom, help=aide)
-
-    st.subheader("Produits")
-    st.multiselect("Produits par défaut", list(CFG.nutrition.produits), key="produits",
+    st.multiselect("Produits utilisés", list(CFG.nutrition.produits), key="produits",
                    help="Glucides par unité : " + ", ".join(
                        f"{n} {g:g} g" for n, g in CFG.nutrition.produits.items()))
-    max_g = CFG.nutrition.glucides_max_par_produit_g
-    saisie_produits = st.data_editor(
-        st.session_state["produits_perso"],
-        key=f"tableau_produits_{st.session_state['version_tableau']}",
-        num_rows="dynamic",
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "nom": st.column_config.TextColumn("Mes produits", required=True),
-            "glucides_g": st.column_config.NumberColumn(
-                "Glucides (g)", min_value=1, max_value=max_g, step=1, required=True
-            ),
-        },
-    )
-    st.caption("Ajoute une ligne par produit perso. Décoche les produits par défaut pour "
-               "n'utiliser que les tiens.")
-    # Cases cochées + produits perso, validés ensemble (doublons, valeurs manquantes...)
-    lignes = [(n, CFG.nutrition.produits[n]) for n in st.session_state["produits"]]
-    lignes += list(saisie_produits[["nom", "glucides_g"]].itertuples(index=False, name=None))
-    try:
-        produits = produits_depuis_saisie(lignes, max_g)
-        erreur_produits = None
-    except ProfilError as erreur:
-        produits, erreur_produits = {}, str(erreur)
-        st.error(erreur_produits)
 
     st.subheader("Profil")
-    st.download_button("Enregistrer le profil (JSON)", lire_profil(produits).vers_json(),
+    st.download_button("Enregistrer le profil (JSON)", lire_profil().vers_json(),
                        file_name="profil_athlete.json", mime="application/json")
     st.file_uploader("Charger un profil", type=["json"], key="fichier_profil",
                      on_change=charger_profil_json)
@@ -189,10 +144,7 @@ st.caption(
     "Outil d'aide à la planification : ce n'est ni un conseil médical, ni un conseil diététique."
 )
 
-if erreur_produits:
-    st.error(f"Produits : {erreur_produits}")
-    st.stop()
-cfg = lire_profil(produits).appliquer(CFG)
+cfg = lire_profil().appliquer(CFG)
 temps_cible_s = heures * 3600 + minutes * 60
 
 try:
