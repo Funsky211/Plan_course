@@ -240,12 +240,17 @@ class _Terrain:
                 score += d.bonus_terrain_facile
                 motif = motif or "portion roulante"
 
-        raison = motif or RAISON_INTERVALLE
+        if motif:
+            raison = motif
+        elif alerte:
+            raison, alerte = f"{alerte}, pas de meilleur créneau", ""
+        else:
+            raison = RAISON_INTERVALLE
         decalage = round((t - t0) / 60)
         if decalage:
             raison += f" (décalée de {decalage:+d} min)"
         if alerte:
-            raison += f" ; {alerte}, pas de meilleur créneau"
+            raison += f" ; {alerte}"  # ex. ravito situé en pleine montée
         return score, raison
 
 
