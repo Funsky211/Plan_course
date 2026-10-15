@@ -75,6 +75,7 @@ nutrition:
   fraction_depart: 0.7            # montée en charge : on démarre à 70 % de la cible g/h...
   montee_en_charge_min: 60        # ...et on l'atteint après X min (0 = désactivé)
   max_unites_par_prise: 2         # au plus X produits avalés à la même prise
+  glucides_max_par_produit_g: 200 # borne de saisie d'un produit perso (g par unité)
   produits:                       # glucides par unité ; chaque prise prend la combinaison la plus proche
     Gel: 25
     Barre: 40
