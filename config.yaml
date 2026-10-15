@@ -1,0 +1,25 @@
+# Paramètres du moteur trailnutri.
+# Aucune valeur métier n'est codée en dur dans src/ : tout se règle ici.
+
+gpx:
+  pas_reechantillonnage_m: 10     # la trace est rééchantillonnée tous les X m avant lissage
+  lissage_fenetre_m: 150          # largeur de la fenêtre Savitzky-Golay (en mètres)
+  lissage_ordre: 2                # ordre du polynôme Savitzky-Golay
+  distance_min_km: 1.0            # en dessous, la trace est refusée
+
+segments:
+  longueur_m: 150                 # longueur cible d'un segment (100 à 200 m)
+
+pacing:
+  pente_min: -0.45                # pentes bornées (fraction : 0.10 = 10 %) avant modèle de Minetti
+  pente_max: 0.45
+  facteur_descente_min: 0.8       # une descente ne va pas plus vite que 1/0.8 = 1.25x l'allure à plat
+  derive_fatigue: 0.0             # 0.10 = segments 10 % plus lents en fin de course qu'au départ
+  allure_plate_min_s_km: 150      # 2:30 min/km : en dessous, temps cible jugé irréaliste
+  allure_plate_max_s_km: 1200     # 20:00 min/km : au-dessus, temps cible jugé irréaliste
+
+nutrition:
+  glucides_g_h: 60                # cible de glucides par heure
+  glucides_g_h_max: 90            # plafond accepté
+  intervalle_min: 25              # une prise toutes les X minutes
+  delai_premiere_prise_min: 15    # aucune prise avant ce délai

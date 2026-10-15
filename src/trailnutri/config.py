@@ -1,0 +1,63 @@
+"""Chargement de config.yaml en dataclasses typées."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+
+# config.yaml à la racine du repo (src/trailnutri/config.py -> ../../config.yaml)
+CHEMIN_CONFIG_DEFAUT = Path(__file__).resolve().parents[2] / "config.yaml"
+
+
+@dataclass(frozen=True)
+class GpxConfig:
+    pas_reechantillonnage_m: float
+    lissage_fenetre_m: float
+    lissage_ordre: int
+    distance_min_km: float
+
+
+@dataclass(frozen=True)
+class SegmentsConfig:
+    longueur_m: float
+
+
+@dataclass(frozen=True)
+class PacingConfig:
+    pente_min: float
+    pente_max: float
+    facteur_descente_min: float
+    derive_fatigue: float
+    allure_plate_min_s_km: float
+    allure_plate_max_s_km: float
+
+
+@dataclass(frozen=True)
+class NutritionConfig:
+    glucides_g_h: float
+    glucides_g_h_max: float
+    intervalle_min: float
+    delai_premiere_prise_min: float
+
+
+@dataclass(frozen=True)
+class Config:
+    gpx: GpxConfig
+    segments: SegmentsConfig
+    pacing: PacingConfig
+    nutrition: NutritionConfig
+
+
+def charger_config(chemin: str | Path | None = None) -> Config:
+    """Lit le YAML et construit la Config. Une clé inconnue ou manquante lève une TypeError."""
+    chemin = Path(chemin) if chemin else CHEMIN_CONFIG_DEFAUT
+    with open(chemin, encoding="utf-8") as f:
+        brut = yaml.safe_load(f)
+    return Config(
+        gpx=GpxConfig(**brut["gpx"]),
+        segments=SegmentsConfig(**brut["segments"]),
+        pacing=PacingConfig(**brut["pacing"]),
+        nutrition=NutritionConfig(**brut["nutrition"]),
+    )
