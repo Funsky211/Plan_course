@@ -29,5 +29,7 @@ py -3.10 -m venv .venv
 3. `pacing` : facteur de pente issu du coût énergétique de Minetti (plancher en descente),
    dérive de fatigue optionnelle, puis mise à l'échelle pour coller au temps cible.
    Refuse un temps cible impliquant une allure à plat hors de [2:30 ; 20:00] min/km.
+4. `nutrition` : une prise toutes les X min (après le délai de départ, jamais sur la ligne
+   d'arrivée), quantité = g/h × X/60, km et D+ cumulé interpolés. Export CSV (`;`, décimale `,`).
 
 Trace d'exemple : `data/exemple.gpx` (régénérable via `python scripts/generer_gpx_exemple.py`).
