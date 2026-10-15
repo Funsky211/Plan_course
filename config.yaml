@@ -38,6 +38,15 @@ pacing:
   arret_ravito_s: 120             # arrêt à chaque ravito complet (compris dans le temps cible)
   arret_eau_s: 30                 # arrêt à chaque point d'eau
 
+calibration:                      # ajustement du pacing sur des activités passées (GPX horodatés)
+  pente_plate_max: 0.03           # |pente| <= 3 % = plat (allure de référence)
+  descente_pente_min: -0.15       # descentes "roulantes" utilisées pour le plancher de descente
+  descente_pente_max: -0.03
+  facteur_pause: 3.0              # segment > 3x plus lent que prévu = pause, ignoré
+  min_segments: 5                 # en dessous, la mesure n'est pas jugée fiable
+  facteur_descente_bornes: [0.5, 1.0]
+  derive_bornes: [0.0, 0.5]
+
 difficulte:
   poids:                          # somme pondérée, renormalisée pour rester entre 0 et 1
     montee: 0.30                  # montée soutenue

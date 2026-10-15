@@ -52,6 +52,17 @@ class PacingConfig:
 
 
 @dataclass(frozen=True)
+class CalibrationConfig:
+    pente_plate_max: float
+    descente_pente_min: float
+    descente_pente_max: float
+    facteur_pause: float
+    min_segments: int
+    facteur_descente_bornes: list[float]
+    derive_bornes: list[float]
+
+
+@dataclass(frozen=True)
 class DifficulteConfig:
     poids: dict[str, float]
     montee_pente_min: float
@@ -113,6 +124,7 @@ class Config:
     waypoints: WaypointsConfig
     segments: SegmentsConfig
     pacing: PacingConfig
+    calibration: CalibrationConfig
     difficulte: DifficulteConfig
     nutrition: NutritionConfig
     decalage: DecalageConfig
@@ -130,6 +142,7 @@ def charger_config(chemin: str | Path | None = None) -> Config:
         waypoints=WaypointsConfig(**brut["waypoints"]),
         segments=SegmentsConfig(**brut["segments"]),
         pacing=PacingConfig(**brut["pacing"]),
+        calibration=CalibrationConfig(**brut["calibration"]),
         difficulte=DifficulteConfig(**brut["difficulte"]),
         nutrition=NutritionConfig(**brut["nutrition"]),
         decalage=DecalageConfig(**brut["decalage"]),

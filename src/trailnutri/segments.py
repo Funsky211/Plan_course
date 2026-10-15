@@ -12,7 +12,8 @@ def decouper_segments(trace: pd.DataFrame, cfg: SegmentsConfig) -> pd.DataFrame:
     """Découpe la trace (sortie de charger_gpx) en segments d'environ `cfg.longueur_m`.
 
     Colonnes : segment, debut_m, fin_m, longueur_m, alt_debut_m, alt_fin_m,
-    d_plus_m, d_moins_m, pente (fraction, 0.10 = 10 %), d_plus_cumul_m.
+    d_plus_m, d_moins_m, pente (fraction, 0.10 = 10 %), d_plus_cumul_m,
+    et duree_reelle_s si la trace est horodatée.
     """
     distance = trace["distance_m"].to_numpy()
     altitude = trace["altitude_m"].to_numpy()
@@ -51,4 +52,9 @@ def decouper_segments(trace: pd.DataFrame, cfg: SegmentsConfig) -> pd.DataFrame:
         }
     )
     seg["d_plus_cumul_m"] = seg["d_plus_m"].cumsum()
+
+    # Activité enregistrée : durée réellement passée sur chaque segment (pour la calibration)
+    if "temps_reel_s" in trace:
+        temps_bornes = np.interp(bornes, distance, trace["temps_reel_s"].to_numpy())
+        seg["duree_reelle_s"] = np.diff(temps_bornes)
     return seg
