@@ -1,6 +1,8 @@
-"""Score de difficulté par segment (0 à 1) et zones dures.
+"""Score de difficulté continu par segment (0 à 1).
 
-Six facteurs normalisés entre 0 et 1, combinés par une somme pondérée (poids dans config.yaml).
+Six facteurs, chacun calculé par une courbe continue (curves.py) plutôt qu'un seuil dur,
+combinés par une moyenne pondérée (poids dans config.yaml), puis lissés sur quelques
+centaines de mètres pour éviter les sauts brusques entre segments.
 """
 
 from __future__ import annotations
@@ -10,74 +12,74 @@ import pandas as pd
 
 from trailnutri.config import FACTEURS_DIFFICULTE as FACTEURS
 from trailnutri.config import DifficulteConfig
+from trailnutri.curves import gaussian_window, ramp, sigmoid
 from trailnutri.outils import plages
 
 
 def calculer_difficulte(segments: pd.DataFrame, cfg: DifficulteConfig) -> pd.DataFrame:
     """Ajoute à la sortie de calculer_temps les colonnes :
 
-    f_<facteur> pour chacun des FACTEURS, difficulte (0-1), montee_dure, descente_technique
-    et zone_dure (booléens).
+    f_<facteur> (0-1) pour chacun des FACTEURS, difficulte_brute, difficulte (lissée),
+    montee_dure et descente_technique (booléens utilisés pour placer les prises), zone_dure.
     """
     seg = segments.copy()
     pente = seg["pente"].to_numpy()
+    longueur = seg["longueur_m"].to_numpy()
     milieu_m = ((seg["debut_m"] + seg["fin_m"]) / 2).to_numpy()
-    milieu_s = ((seg["temps_debut_s"] + seg["temps_fin_s"]) / 2).to_numpy()
-    distance_totale = seg["fin_m"].iloc[-1]
-    duree_totale = seg["temps_fin_s"].iloc[-1]
+    heures = ((seg["temps_debut_s"] + seg["temps_fin_s"]) / 2).to_numpy() / 3600
 
-    # Montée soutenue : uniquement dans un bloc de montée assez long ; score selon la pente
-    blocs = blocs_montee(seg, cfg)
-    montee_dure = np.zeros(len(seg), dtype=bool)
-    for debut, fin in blocs:
-        montee_dure[debut : fin + 1] = True
-    seg["montee_dure"] = montee_dure
-    seg["f_montee"] = np.where(montee_dure, np.clip(pente / cfg.montee_pente_max, 0, 1), 0.0)
-
-    # Fatigue cumulée : croît linéairement avec le temps écoulé
-    seg["f_fatigue"] = milieu_s / duree_totale
-
-    # Position : le dernier tiers pèse plus
-    seg["f_position"] = (milieu_m / distance_totale >= cfg.position_debut_fraction).astype(float)
-
-    # Descente technique : sous le seuil, score selon la pente
-    seg["descente_technique"] = pente < cfg.descente_pente_seuil
-    seg["f_descente"] = np.where(
-        seg["descente_technique"], np.clip(pente / cfg.descente_pente_max, 0, 1), 0.0
+    # Montée : raide (sigmoïde sur la pente) ET longue (rampe sur la distance montée d'affilée)
+    seg["montee_continue_m"] = distance_montee_continue(pente, longueur, cfg.montee_plancher)
+    seg["f_montee"] = sigmoid(pente, cfg.montee_centre, cfg.montee_raideur) * ramp(
+        seg["montee_continue_m"], 0, cfg.montee_longueur_pleine_m
     )
 
-    # Enchaînement : une montée dure qui arrive peu après la précédente compte plus
-    seg["f_enchainement"] = _enchainement(seg, blocs, cfg)
+    # Descente technique : sigmoïde sur la pente négative (-pente > -centre)
+    seg["f_descente"] = sigmoid(-pente, -cfg.descente_centre, cfg.descente_raideur)
 
-    # Creux physiologique : fenêtre de temps écoulé
-    heures = milieu_s / 3600
-    seg["f_creux"] = ((heures >= cfg.creux_debut_h) & (heures <= cfg.creux_fin_h)).astype(float)
+    # Fatigue (temps écoulé) et position (avancement), progressives
+    seg["f_fatigue"] = ramp(heures, 0, cfg.fatigue_pleine_h)
+    seg["f_position"] = ramp(milieu_m / seg["fin_m"].iloc[-1], cfg.position_debut,
+                             cfg.position_fin)
+
+    # Creux physiologique : cloche autour de ~3h15
+    seg["f_creux"] = gaussian_window(heures, cfg.creux_centre_h, cfg.creux_largeur_h)
+
+    # Booléens "à éviter pour manger", dérivés des facteurs continus
+    seg["montee_dure"] = seg["f_montee"] >= cfg.seuil_contrainte
+    seg["descente_technique"] = seg["f_descente"] >= cfg.seuil_contrainte
+
+    # Enchaînement : montée qui arrive peu après la précédente
+    seg["f_enchainement"] = _enchainement(seg, cfg)
 
     poids = np.array([cfg.poids[f] for f in FACTEURS])
     facteurs = seg[[f"f_{f}" for f in FACTEURS]].to_numpy()
-    seg["difficulte"] = facteurs @ poids / poids.sum()
-    seg["zone_dure"] = seg["difficulte"] >= cfg.seuil_zone_dure
+    seg["difficulte_brute"] = facteurs @ poids / poids.sum()
+    seg["difficulte"] = lisser(seg["difficulte_brute"], longueur, cfg.lissage_fenetre_m)
+    seg["zone_dure"] = seg["difficulte"] >= cfg.seuil_dur
     return seg
 
 
-def blocs_montee(segments: pd.DataFrame, cfg: DifficulteConfig) -> list[tuple[int, int]]:
-    """Indices (début, fin inclus) des montées soutenues.
+def distance_montee_continue(
+    pente: np.ndarray, longueur: np.ndarray, plancher: float
+) -> np.ndarray:
+    """Distance montée d'affilée à la fin de chaque segment (remise à 0 sous le plancher)."""
+    resultat = np.zeros(len(pente))
+    cumul = 0.0
+    for i, (p, lg) in enumerate(zip(pente, longueur, strict=True)):
+        cumul = cumul + lg if p > plancher else 0.0
+        resultat[i] = cumul
+    return resultat
 
-    1. suites de segments au-dessus de montee_pente_min ;
-    2. fusion de deux suites séparées par un replat <= montee_tolerance_m ;
-    3. on ne garde que les blocs d'au moins montee_longueur_min_m.
-    """
-    debut_m = segments["debut_m"].to_numpy()
-    fin_m = segments["fin_m"].to_numpy()
 
-    fusionnes: list[tuple[int, int]] = []
-    for debut, fin in plages(segments["pente"].to_numpy() > cfg.montee_pente_min):
-        if fusionnes and debut_m[debut] - fin_m[fusionnes[-1][1]] <= cfg.montee_tolerance_m:
-            fusionnes[-1] = (fusionnes[-1][0], fin)
-        else:
-            fusionnes.append((debut, fin))
-
-    return [(d, f) for d, f in fusionnes if fin_m[f] - debut_m[d] >= cfg.montee_longueur_min_m]
+def lisser(score: pd.Series, longueur: np.ndarray, fenetre_m: float) -> pd.Series:
+    """Moyenne glissante centrée sur ~fenetre_m mètres (nombre impair de segments)."""
+    n = int(round(fenetre_m / np.mean(longueur)))
+    if n % 2 == 0:
+        n += 1  # impair -> fenêtre centrée sur le segment
+    if n <= 1:
+        return score.copy()
+    return score.rolling(n, center=True, min_periods=1).mean()
 
 
 def zones_dures(segments: pd.DataFrame) -> list[tuple[float, float]]:
@@ -88,12 +90,16 @@ def zones_dures(segments: pd.DataFrame) -> list[tuple[float, float]]:
     ]
 
 
-def _enchainement(
-    seg: pd.DataFrame, blocs: list[tuple[int, int]], cfg: DifficulteConfig
-) -> np.ndarray:
-    """1 si la montée suit immédiatement la précédente, 0 si la récupération est suffisante."""
+def _enchainement(seg: pd.DataFrame, cfg: DifficulteConfig) -> np.ndarray:
+    """Pour chaque montée dure après la première : (1 - rampe sur la récupération) x f_montee.
+
+    Récupération = distance entre la fin de la montée précédente et le début de celle-ci.
+    0 m de récupération -> 1 ; au-delà de enchainement_recup_m -> 0 ; linéaire entre les deux.
+    """
     score = np.zeros(len(seg))
-    for (_, fin_prec), (debut, fin) in zip(blocs, blocs[1:], strict=False):
+    montees = plages(seg["montee_dure"].to_numpy())
+    for (_, fin_prec), (debut, fin) in zip(montees, montees[1:], strict=False):
         recup_m = seg["debut_m"].iloc[debut] - seg["fin_m"].iloc[fin_prec]
-        score[debut : fin + 1] = max(0.0, 1 - recup_m / cfg.enchainement_recup_m)
+        intensite = 1 - float(ramp(recup_m, 0, cfg.enchainement_recup_m))
+        score[debut : fin + 1] = intensite * seg["f_montee"].iloc[debut : fin + 1]
     return score

@@ -47,25 +47,29 @@ calibration:                      # ajustement du pacing sur des activités pass
   facteur_descente_bornes: [0.5, 1.0]
   derive_bornes: [0.0, 0.5]
 
-difficulte:
-  poids:                          # somme pondérée, renormalisée pour rester entre 0 et 1
+difficulte:                       # score continu entre 0 et 1 (courbes, pas de seuils durs)
+  poids:                          # moyenne pondérée des facteurs (renormalisée)
     montee: 0.30                  # montée soutenue
     fatigue: 0.15                 # temps écoulé
-    position: 0.10                # dernier tiers de la course
+    position: 0.10                # avancement dans la course
     descente: 0.15                # descente technique
-    enchainement: 0.15            # montées dures sans récupération
+    enchainement: 0.15            # montées sans récupération
     creux: 0.15                   # creux physiologique
-  montee_pente_min: 0.08          # une montée est "soutenue" au-dessus de 8 %...
-  montee_longueur_min_m: 500      # ...sur au moins 500 m
-  montee_tolerance_m: 150         # un replat plus court que ça ne coupe pas la montée
-  montee_pente_max: 0.25          # pente qui donne le score maximal (1)
-  descente_pente_seuil: -0.12     # descente technique sous -12 %
-  descente_pente_max: -0.30       # pente qui donne le score maximal (1)
-  position_debut_fraction: 0.667  # le "dernier tiers" commence à 66.7 % de la distance
-  enchainement_recup_m: 1500      # moins de X m entre deux montées dures = pas de récupération
-  creux_debut_h: 2.5              # fenêtre du creux physiologique
-  creux_fin_h: 4.0
-  seuil_zone_dure: 0.30           # score au-dessus duquel un segment est en "zone dure"
+  montee_centre: 0.08             # sigmoïde montée : 0.5 à 8 % de pente...
+  montee_raideur: 50              # ...passe de ~0.1 à ~0.9 entre 3.6 % et 12.4 %
+  montee_plancher: 0.03           # au-dessus de 3 %, on compte la distance montée en continu
+  montee_longueur_pleine_m: 500   # facteur montée plein après 500 m de montée continue
+  descente_centre: -0.12          # sigmoïde descente technique : 0.5 à -12 %
+  descente_raideur: 50
+  fatigue_pleine_h: 6.0           # fatigue : de 0 au départ à 1 après 6 h
+  position_debut: 0.33            # position : de 0 au premier tiers...
+  position_fin: 1.0               # ...à 1 à l'arrivée
+  creux_centre_h: 3.25            # creux physiologique : cloche centrée sur 3h15...
+  creux_largeur_h: 0.75           # ...de largeur 45 min
+  enchainement_recup_m: 1500      # récupération à partir de laquelle une montée n'"enchaîne" plus
+  lissage_fenetre_m: 400          # moyenne glissante du score (0 = pas de lissage)
+  seuil_contrainte: 0.5           # facteur montée/descente au-delà duquel on évite d'y manger
+  seuil_dur: 0.65                 # score à partir duquel un segment est "dur"
 
 nutrition:
   glucides_g_h: 60                # cible de glucides par heure

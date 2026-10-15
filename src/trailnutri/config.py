@@ -71,18 +71,42 @@ class CalibrationConfig:
 
 @dataclass(frozen=True)
 class DifficulteConfig:
+    """Paramètres du score continu. Valeurs par défaut : une config ancienne reste valide."""
+
     poids: dict[str, float]
-    montee_pente_min: float
-    montee_longueur_min_m: float
-    montee_tolerance_m: float
-    montee_pente_max: float
-    descente_pente_seuil: float
-    descente_pente_max: float
-    position_debut_fraction: float
-    enchainement_recup_m: float
-    creux_debut_h: float
-    creux_fin_h: float
-    seuil_zone_dure: float
+    # Montée : sigmoïde sur la pente x rampe sur la distance déjà montée en continu
+    montee_centre: float = 0.08
+    montee_raideur: float = 50.0
+    montee_plancher: float = 0.03
+    montee_longueur_pleine_m: float = 500.0
+    # Descente technique : sigmoïde sur la pente négative
+    descente_centre: float = -0.12
+    descente_raideur: float = 50.0
+    # Fatigue : rampe sur le temps écoulé ; position : rampe sur la fraction de distance
+    fatigue_pleine_h: float = 6.0
+    position_debut: float = 0.33
+    position_fin: float = 1.0
+    # Creux physiologique : fenêtre gaussienne sur le temps écoulé
+    creux_centre_h: float = 3.25
+    creux_largeur_h: float = 0.75
+    # Enchaînement : score qui décroît avec la récupération depuis la montée précédente
+    enchainement_recup_m: float = 1500.0
+    # Lissage du score final (moyenne glissante, en mètres)
+    lissage_fenetre_m: float = 400.0
+    # Facteur montée / descente au-dessus duquel le placement des prises l'évite
+    seuil_contrainte: float = 0.5
+    # Score au-dessus duquel un segment est "dur"
+    seuil_dur: float = 0.65
+
+
+# Clés d'anciennes versions de config.yaml, acceptées puis ignorées (compatibilité)
+CLES_OBSOLETES = {
+    "difficulte": {
+        "montee_pente_min", "montee_longueur_min_m", "montee_tolerance_m", "montee_pente_max",
+        "descente_pente_seuil", "descente_pente_max", "position_debut_fraction",
+        "creux_debut_h", "creux_fin_h", "seuil_zone_dure",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -170,16 +194,18 @@ def valider(cfg: Config) -> None:
         (all(w >= 0 for w in cfg.difficulte.poids.values())
          and sum(cfg.difficulte.poids.values()) > 0,
          "difficulte.poids : poids >= 0 et de somme > 0"),
-        (0 <= cfg.difficulte.seuil_zone_dure <= 1, "difficulte.seuil_zone_dure dans [0, 1]"),
-        (cfg.difficulte.montee_pente_max > cfg.difficulte.montee_pente_min > 0,
-         "difficulte : 0 < montee_pente_min < montee_pente_max"),
-        (cfg.difficulte.descente_pente_max < cfg.difficulte.descente_pente_seuil < 0,
-         "difficulte : descente_pente_max < descente_pente_seuil < 0"),
-        (cfg.difficulte.creux_debut_h < cfg.difficulte.creux_fin_h,
-         "difficulte : creux_debut_h < creux_fin_h"),
-        (0 < cfg.difficulte.position_debut_fraction < 1,
-         "difficulte.position_debut_fraction dans ]0, 1["),
-        (cfg.difficulte.enchainement_recup_m > 0, "difficulte.enchainement_recup_m doit être > 0"),
+        (cfg.difficulte.descente_centre < 0 < cfg.difficulte.montee_centre,
+         "difficulte : descente_centre < 0 < montee_centre"),
+        (min(cfg.difficulte.montee_raideur, cfg.difficulte.descente_raideur) > 0,
+         "difficulte : les raideurs doivent être > 0"),
+        (min(cfg.difficulte.montee_longueur_pleine_m, cfg.difficulte.fatigue_pleine_h,
+             cfg.difficulte.creux_largeur_h, cfg.difficulte.enchainement_recup_m) > 0,
+         "difficulte : longueurs, durées et largeurs doivent être > 0"),
+        (0 <= cfg.difficulte.position_debut < cfg.difficulte.position_fin <= 1,
+         "difficulte : 0 <= position_debut < position_fin <= 1"),
+        (cfg.difficulte.lissage_fenetre_m >= 0, "difficulte.lissage_fenetre_m doit être >= 0"),
+        (0 < cfg.difficulte.seuil_contrainte < 1, "difficulte.seuil_contrainte dans ]0, 1["),
+        (0 < cfg.difficulte.seuil_dur <= 1, "difficulte.seuil_dur dans ]0, 1]"),
         (0 < cfg.nutrition.glucides_g_h <= cfg.nutrition.glucides_g_h_max,
          "nutrition : 0 < glucides_g_h <= glucides_g_h_max"),
         (cfg.nutrition.intervalle_min > 0, "nutrition.intervalle_min doit être > 0"),
@@ -201,6 +227,9 @@ def valider(cfg: Config) -> None:
 
 
 def _construire(brut: dict) -> Config:
+    for section, cles in CLES_OBSOLETES.items():
+        for cle in cles:
+            brut.get(section, {}).pop(cle, None)
     return Config(
         gpx=GpxConfig(**brut["gpx"]),
         course=CourseConfig(**brut["course"]),

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 import yaml
@@ -15,8 +16,8 @@ def test_config_par_defaut_valide(cfg):
     [
         ("pacing", {"facteur_descente_min": 1.5}, "facteur_descente_min"),
         ("pacing", {"pente_min": 0.1}, "pente_min"),
-        ("difficulte", {"seuil_zone_dure": 2}, "seuil_zone_dure"),
-        ("difficulte", {"creux_debut_h": 5}, "creux_debut_h"),
+        ("difficulte", {"seuil_dur": 2}, "seuil_dur"),
+        ("difficulte", {"position_debut": 0.9, "position_fin": 0.5}, "position_debut"),
         ("nutrition", {"glucides_g_h": 150}, "glucides_g_h"),
         ("nutrition", {"fraction_depart": 0}, "fraction_depart"),
         ("hydratation", {"ml_h_min": 1000}, "ml_h_min"),
@@ -56,3 +57,11 @@ def test_cle_manquante_ou_inconnue(tmp_path):
     chemin.write_text(yaml.safe_dump(brut, allow_unicode=True), encoding="utf-8")
     with pytest.raises(ConfigError):
         charger_config(chemin)
+
+
+def test_ancienne_config_toujours_valide():
+    # config.yaml d'avant le score continu : anciennes clés ignorées, nouvelles par défaut
+    ancienne = charger_config(Path(__file__).parent / "data" / "config_ancienne.yaml")
+    assert ancienne.difficulte.montee_centre == 0.08
+    assert ancienne.difficulte.lissage_fenetre_m == 400
+    assert not hasattr(ancienne.difficulte, "seuil_zone_dure")

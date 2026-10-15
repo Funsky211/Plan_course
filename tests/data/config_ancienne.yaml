@@ -1,0 +1,99 @@
+# Paramètres du moteur trailnutri.
+# Aucune valeur métier n'est codée en dur dans src/ : tout se règle ici.
+
+gpx:
+  pas_reechantillonnage_m: 10     # la trace est rééchantillonnée tous les X m avant lissage
+  lissage_fenetre_m: 150          # largeur de la fenêtre Savitzky-Golay (en mètres)
+  lissage_ordre: 2                # ordre du polynôme Savitzky-Golay
+  distance_min_km: 1.0            # en dessous, la trace est refusée
+
+course:
+  ravitos_km: []                  # ravitos officiels, en plus de ceux lus dans le GPX (ex. [5.2, 10])
+  barrieres: []                   # ex. [{km: 12.5, limite: "2:30"}], limite = temps écoulé depuis le départ
+
+waypoints:
+  distance_max_trace_m: 150       # un POI plus loin que ça de la trace est ignoré
+  ecart_min_passages_m: 1000      # deux passages au même POI doivent être séparés d'au moins X m
+  fusion_ravitos_m: 300           # deux ravitos plus proches que ça = le même (GPX + saisie)
+  mots_cles:                      # mot entier, sans casse ni accents ; un POI peut avoir plusieurs catégories
+    ravito: [ravito, ravitaillement, aid station, aid, food, buffet, refreshment]
+    eau: [point d'eau, eau potable, fontaine, source, water, drinking water, liquide]
+    barriere: [barriere, barriere horaire, cutoff, cut-off, cut off, time limit, limite horaire]
+    sommet: [sommet, summit, pic, peak, point culminant]
+    col: [col, pass]
+    depart: [depart, start]
+    arrivee: [arrivee, finish]
+
+segments:
+  longueur_m: 150                 # longueur cible d'un segment (100 à 200 m)
+
+pacing:
+  pente_min: -0.45                # pentes bornées (fraction : 0.10 = 10 %) avant modèle de Minetti
+  pente_max: 0.45
+  facteur_descente_min: 0.8       # une descente ne va pas plus vite que 1/0.8 = 1.25x l'allure à plat
+  derive_fatigue: 0.0             # 0.10 = segments 10 % plus lents en fin de course qu'au départ
+  allure_plate_min_s_km: 150      # 2:30 min/km : en dessous, temps cible jugé irréaliste
+  allure_plate_max_s_km: 1200     # 20:00 min/km : au-dessus, temps cible jugé irréaliste
+  pente_marche: 0.15              # au-dessus, segment annoté "marche" (rando-course)
+  arret_ravito_s: 120             # arrêt à chaque ravito complet (compris dans le temps cible)
+  arret_eau_s: 30                 # arrêt à chaque point d'eau
+
+calibration:                      # ajustement du pacing sur des activités passées (GPX horodatés)
+  pente_plate_max: 0.03           # |pente| <= 3 % = plat (allure de référence)
+  descente_pente_min: -0.15       # descentes "roulantes" utilisées pour le plancher de descente
+  descente_pente_max: -0.03
+  facteur_pause: 3.0              # segment > 3x plus lent que prévu = pause, ignoré
+  min_segments: 5                 # en dessous, la mesure n'est pas jugée fiable
+  facteur_descente_bornes: [0.5, 1.0]
+  derive_bornes: [0.0, 0.5]
+
+difficulte:
+  poids:                          # somme pondérée, renormalisée pour rester entre 0 et 1
+    montee: 0.30                  # montée soutenue
+    fatigue: 0.15                 # temps écoulé
+    position: 0.10                # dernier tiers de la course
+    descente: 0.15                # descente technique
+    enchainement: 0.15            # montées dures sans récupération
+    creux: 0.15                   # creux physiologique
+  montee_pente_min: 0.08          # une montée est "soutenue" au-dessus de 8 %...
+  montee_longueur_min_m: 500      # ...sur au moins 500 m
+  montee_tolerance_m: 150         # un replat plus court que ça ne coupe pas la montée
+  montee_pente_max: 0.25          # pente qui donne le score maximal (1)
+  descente_pente_seuil: -0.12     # descente technique sous -12 %
+  descente_pente_max: -0.30       # pente qui donne le score maximal (1)
+  position_debut_fraction: 0.667  # le "dernier tiers" commence à 66.7 % de la distance
+  enchainement_recup_m: 1500      # moins de X m entre deux montées dures = pas de récupération
+  creux_debut_h: 2.5              # fenêtre du creux physiologique
+  creux_fin_h: 4.0
+  seuil_zone_dure: 0.30           # score au-dessus duquel un segment est en "zone dure"
+
+nutrition:
+  glucides_g_h: 60                # cible de glucides par heure
+  glucides_g_h_max: 90            # plafond accepté
+  intervalle_min: 25              # une prise toutes les X minutes
+  delai_premiere_prise_min: 15    # aucune prise avant ce délai
+  fraction_depart: 0.7            # montée en charge : on démarre à 70 % de la cible g/h...
+  montee_en_charge_min: 60        # ...et on l'atteint après X min (0 = désactivé)
+
+hydratation:
+  temperature_c: 15               # température prévue (modifiable dans l'interface)
+  temperature_ref_c: 15
+  ml_h_base: 500                  # boisson par heure à la température de référence
+  ml_h_par_degre: 20              # + X ml/h par degré au-dessus de la référence
+  ml_h_min: 300
+  ml_h_max: 900
+  sodium_mg_par_litre: 500
+
+decalage:                         # déplacement de chaque prise dans une fenêtre autour de l'horaire de base
+  fenetre_min: 6                  # ± X minutes autour de l'horaire de base
+  pas_min: 1                      # finesse de la recherche
+  ecart_min_entre_prises_min: 12  # deux prises jamais plus rapprochées que ça
+  bonus_ravito: 3.0               # se caler sur un ravito officiel
+  bonus_avant_montee: 1.0         # manger juste avant une montée dure...
+  horizon_avant_montee_min: 5     # ...qui commence dans les X minutes
+  bonus_terrain_facile: 0.5       # plat ou faible montée
+  terrain_facile_pente_min: -0.03
+  terrain_facile_pente_max: 0.05
+  penalite_montee_dure: 1.0       # éviter le milieu d'une montée dure
+  penalite_descente_technique: 2.0  # éviter les descentes techniques
+  penalite_par_min_decalage: 0.05 # à score égal, rester proche de l'horaire de base
