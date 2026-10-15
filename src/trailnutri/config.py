@@ -73,6 +73,22 @@ class NutritionConfig:
 
 
 @dataclass(frozen=True)
+class DecalageConfig:
+    fenetre_min: float
+    pas_min: float
+    ecart_min_entre_prises_min: float
+    bonus_ravito: float
+    bonus_avant_montee: float
+    horizon_avant_montee_min: float
+    bonus_terrain_facile: float
+    terrain_facile_pente_min: float
+    terrain_facile_pente_max: float
+    penalite_montee_dure: float
+    penalite_descente_technique: float
+    penalite_par_min_decalage: float
+
+
+@dataclass(frozen=True)
 class Config:
     gpx: GpxConfig
     course: CourseConfig
@@ -81,6 +97,7 @@ class Config:
     pacing: PacingConfig
     difficulte: DifficulteConfig
     nutrition: NutritionConfig
+    decalage: DecalageConfig
 
 
 def charger_config(chemin: str | Path | None = None) -> Config:
@@ -96,4 +113,5 @@ def charger_config(chemin: str | Path | None = None) -> Config:
         pacing=PacingConfig(**brut["pacing"]),
         difficulte=DifficulteConfig(**brut["difficulte"]),
         nutrition=NutritionConfig(**brut["nutrition"]),
+        decalage=DecalageConfig(**brut["decalage"]),
     )

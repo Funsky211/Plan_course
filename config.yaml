@@ -60,3 +60,17 @@ nutrition:
   glucides_g_h_max: 90            # plafond accepté
   intervalle_min: 25              # une prise toutes les X minutes
   delai_premiere_prise_min: 15    # aucune prise avant ce délai
+
+decalage:                         # déplacement de chaque prise dans une fenêtre autour de l'horaire de base
+  fenetre_min: 6                  # ± X minutes autour de l'horaire de base
+  pas_min: 1                      # finesse de la recherche
+  ecart_min_entre_prises_min: 12  # deux prises jamais plus rapprochées que ça
+  bonus_ravito: 3.0               # se caler sur un ravito officiel
+  bonus_avant_montee: 1.0         # manger juste avant une montée dure...
+  horizon_avant_montee_min: 5     # ...qui commence dans les X minutes
+  bonus_terrain_facile: 0.5       # plat ou faible montée
+  terrain_facile_pente_min: -0.03
+  terrain_facile_pente_max: 0.05
+  penalite_montee_dure: 1.0       # éviter le milieu d'une montée dure
+  penalite_descente_technique: 2.0  # éviter les descentes techniques
+  penalite_par_min_decalage: 0.05 # à score égal, rester proche de l'horaire de base
