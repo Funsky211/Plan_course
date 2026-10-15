@@ -47,7 +47,12 @@ def test_classer(cfg, texte, attendu):
 
 @pytest.mark.parametrize(
     "texte, attendu",
-    [("Barrière 14h30", "14:30"), ("cutoff 9:05", "09:05"), ("Barrière 15h", "15:00"), ("km 12", "")],
+    [
+        ("Barrière 14h30", "14:30"),
+        ("cutoff 9:05", "09:05"),
+        ("Barrière 15h", "15:00"),
+        ("km 12", ""),
+    ],
 )
 def test_lire_heure_limite(texte, attendu):
     assert lire_heure_limite(texte) == attendu
@@ -93,7 +98,11 @@ def test_aller_retour_deux_passages(cfg):
 def test_ravitos_et_barrieres_depuis_pois(cfg):
     gpx, trace = charger(
         cfg,
-        [(1_500, "Fontaine", "point d'eau"), (3_000, "Ravito", "Barrière 10h30"), (5_000, "Sommet", "")],
+        [
+            (1_500, "Fontaine", "point d'eau"),
+            (3_000, "Ravito", "Barrière 10h30"),
+            (5_000, "Sommet", ""),
+        ],
     )
     pois = extraire_pois(gpx, trace, cfg.waypoints)
     ravitos = ravitos_depuis_pois(pois)

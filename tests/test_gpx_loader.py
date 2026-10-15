@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-
 from conftest import gpx_io
+
 from trailnutri.gpx_loader import GpxError, charger_gpx, denivele
 
 

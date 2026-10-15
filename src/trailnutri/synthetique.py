@@ -29,7 +29,7 @@ def gpx_depuis_profil(
     gpx = gpxpy.gpx.GPX()
     track = gpxpy.gpx.GPXTrack(name="synthetique")
     segment = gpxpy.gpx.GPXTrackSegment()
-    for i, (d, alt) in enumerate(zip(distances_m, altitudes_m)):
+    for i, (d, alt) in enumerate(zip(distances_m, altitudes_m, strict=True)):
         horodatage = DEPART + timedelta(seconds=float(temps_s[i])) if temps_s is not None else None
         segment.points.append(
             gpxpy.gpx.GPXTrackPoint(

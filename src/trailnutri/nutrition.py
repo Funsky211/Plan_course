@@ -214,7 +214,7 @@ class _Terrain:
         score = -d.penalite_par_min_decalage * abs(t - t0) / 60
         motif, alerte = "", ""
 
-        for t_ravito, ravito in zip(self.temps_ravitos, self.ravitos):
+        for t_ravito, ravito in zip(self.temps_ravitos, self.ravitos, strict=True):
             if abs(t_ravito - t) < 30:
                 score += d.bonus_ravito
                 motif = f"au ravito « {ravito.nom} » (km {ravito.km:.1f})"

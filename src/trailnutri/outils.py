@@ -13,4 +13,4 @@ def plages(masque: np.ndarray) -> list[tuple[int, int]]:
     bords = np.diff(np.concatenate([[0], np.asarray(masque).astype(int), [0]]))
     debuts = np.flatnonzero(bords == 1)
     fins = np.flatnonzero(bords == -1) - 1
-    return list(zip(debuts.tolist(), fins.tolist()))
+    return list(zip(debuts.tolist(), fins.tolist(), strict=True))

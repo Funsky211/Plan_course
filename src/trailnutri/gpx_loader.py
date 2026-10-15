@@ -24,7 +24,7 @@ def lire_gpx(source: str | Path | IO) -> gpxpy.gpx.GPX:
     """Parse le fichier GPX (chemin ou fichier ouvert)."""
     try:
         if isinstance(source, (str, Path)):
-            with open(source, encoding="utf-8") as f:
+            with open(source, encoding="utf-8-sig") as f:  # -sig : tolère un BOM
                 return gpxpy.parse(f)
         return gpxpy.parse(source)
     except gpxpy.gpx.GPXException as erreur:

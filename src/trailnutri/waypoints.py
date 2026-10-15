@@ -145,7 +145,9 @@ def parser_barrieres(texte: str) -> list[Barriere]:
         try:
             km_txt, limite_txt = ligne.split(";")
         except ValueError:
-            raise ValueError(f"Ligne de barrière illisible : '{ligne}' (attendu 'km ; h:mm')")
+            raise ValueError(
+                f"Ligne de barrière illisible : '{ligne}' (attendu 'km ; h:mm')"
+            ) from None
         km = float(km_txt.strip().replace(",", "."))
         barrieres.append(Barriere(km, lire_hmm(limite_txt), f"Barrière km {km:g}"))
     return barrieres

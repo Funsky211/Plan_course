@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Organisateur" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="45.910792" lon="6.811631">
+    <name>Ravitaillement du Col</name>
+    <desc>Barrière horaire 11h15 - eau, solide</desc>
+    <type>Aid Station</type>
+  </wpt>
+  <wpt lat="45.921152" lon="6.822796"><name>Sommet</name></wpt>
+  <rte>
+    <name>Parcours 3 km</name>
+    <rtept lat="45.900000" lon="6.800000"><ele>1050</ele></rtept>
+    <rtept lat="45.900432" lon="6.800465"><ele>1055</ele></rtept>
+    <rtept lat="45.900863" lon="6.800930"><ele>1060</ele></rtept>
+    <rtept lat="45.901295" lon="6.801396"><ele>1064</ele></rtept>
+    <rtept lat="45.901727" lon="6.801861"><ele>1069</ele></rtept>
+    <rtept lat="45.902158" lon="6.802326"><ele>1074</ele></rtept>
+    <rtept lat="45.902590" lon="6.802791"><ele>1079</ele></rtept>
+    <rtept lat="45.903022" lon="6.803257"><ele>1084</ele></rtept>
+    <rtept lat="45.903453" lon="6.803722"><ele>1088</ele></rtept>
+    <rtept lat="45.903885" lon="6.804187"><ele>1093</ele></rtept>
+    <rtept lat="45.904317" lon="6.804652"><ele>1098</ele></rtept>
+    <rtept lat="45.904748" lon="6.805117"><ele>1103</ele></rtept>
+    <rtept lat="45.905180" lon="6.805583"><ele>1108</ele></rtept>
+    <rtept lat="45.905612" lon="6.806048"><ele>1112</ele></rtept>
+    <rtept lat="45.906043" lon="6.806513"><ele>1117</ele></rtept>
+    <rtept lat="45.906475" lon="6.806978"><ele>1122</ele></rtept>
+    <rtept lat="45.906907" lon="6.807444"><ele>1127</ele></rtept>
+    <rtept lat="45.907338" lon="6.807909"><ele>1132</ele></rtept>
+    <rtept lat="45.907770" lon="6.808374"><ele>1136</ele></rtept>
+    <rtept lat="45.908202" lon="6.808839"><ele>1141</ele></rtept>
+    <rtept lat="45.908633" lon="6.809304"><ele>1146</ele></rtept>
+    <rtept lat="45.909065" lon="6.809770"><ele>1151</ele></rtept>
+    <rtept lat="45.909497" lon="6.810235"><ele>1156</ele></rtept>
+    <rtept lat="45.909929" lon="6.810700"><ele>1160</ele></rtept>
+    <rtept lat="45.910360" lon="6.811165"><ele>1165</ele></rtept>
+    <rtept lat="45.910792" lon="6.811631"><ele>1170</ele></rtept>
+    <rtept lat="45.911224" lon="6.812096"><ele>1175</ele></rtept>
+    <rtept lat="45.911655" lon="6.812561"><ele>1180</ele></rtept>
+    <rtept lat="45.912087" lon="6.813026"><ele>1184</ele></rtept>
+    <rtept lat="45.912519" lon="6.813492"><ele>1189</ele></rtept>
+    <rtept lat="45.912950" lon="6.813957"><ele>1194</ele></rtept>
+    <rtept lat="45.913382" lon="6.814422"><ele>1199</ele></rtept>
+    <rtept lat="45.913814" lon="6.814887"><ele>1204</ele></rtept>
+    <rtept lat="45.914245" lon="6.815352"><ele>1208</ele></rtept>
+    <rtept lat="45.914677" lon="6.815818"><ele>1213</ele></rtept>
+    <rtept lat="45.915109" lon="6.816283"><ele>1218</ele></rtept>
+    <rtept lat="45.915540" lon="6.816748"><ele>1223</ele></rtept>
+    <rtept lat="45.915972" lon="6.817213"><ele>1228</ele></rtept>
+    <rtept lat="45.916404" lon="6.817679"><ele>1232</ele></rtept>
+    <rtept lat="45.916835" lon="6.818144"><ele>1237</ele></rtept>
+    <rtept lat="45.917267" lon="6.818609"><ele>1242</ele></rtept>
+    <rtept lat="45.917699" lon="6.819074"><ele>1247</ele></rtept>
+    <rtept lat="45.918130" lon="6.819539"><ele>1252</ele></rtept>
+    <rtept lat="45.918562" lon="6.820005"><ele>1256</ele></rtept>
+    <rtept lat="45.918994" lon="6.820470"><ele>1261</ele></rtept>
+    <rtept lat="45.919425" lon="6.820935"><ele>1266</ele></rtept>
+    <rtept lat="45.919857" lon="6.821400"><ele>1271</ele></rtept>
+    <rtept lat="45.920289" lon="6.821866"><ele>1276</ele></rtept>
+    <rtept lat="45.920720" lon="6.822331"><ele>1280</ele></rtept>
+    <rtept lat="45.921152" lon="6.822796"><ele>1285</ele></rtept>
+  </rte>
+</gpx>

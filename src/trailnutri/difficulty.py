@@ -8,10 +8,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from trailnutri.config import FACTEURS_DIFFICULTE as FACTEURS
 from trailnutri.config import DifficulteConfig
 from trailnutri.outils import plages
-
-FACTEURS = ("montee", "fatigue", "position", "descente", "enchainement", "creux")
 
 
 def calculer_difficulte(segments: pd.DataFrame, cfg: DifficulteConfig) -> pd.DataFrame:
@@ -94,7 +93,7 @@ def _enchainement(
 ) -> np.ndarray:
     """1 si la montée suit immédiatement la précédente, 0 si la récupération est suffisante."""
     score = np.zeros(len(seg))
-    for (_, fin_prec), (debut, fin) in zip(blocs, blocs[1:]):
+    for (_, fin_prec), (debut, fin) in zip(blocs, blocs[1:], strict=False):
         recup_m = seg["debut_m"].iloc[debut] - seg["fin_m"].iloc[fin_prec]
         score[debut : fin + 1] = max(0.0, 1 - recup_m / cfg.enchainement_recup_m)
     return score

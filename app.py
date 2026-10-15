@@ -58,7 +58,8 @@ def ecrire_profil(profil: ProfilAthlete) -> None:
 
 
 def lire_profil() -> ProfilAthlete:
-    return ProfilAthlete(**{nom: st.session_state[nom] for nom in ProfilAthlete.__dataclass_fields__})
+    champs = ProfilAthlete.__dataclass_fields__
+    return ProfilAthlete(**{nom: st.session_state[nom] for nom in champs})
 
 
 def charger_profil_json() -> None:
