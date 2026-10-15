@@ -20,6 +20,20 @@ class GpxConfig:
 
 
 @dataclass(frozen=True)
+class CourseConfig:
+    ravitos_km: list[float]
+    barrieres: list[dict]
+
+
+@dataclass(frozen=True)
+class WaypointsConfig:
+    distance_max_trace_m: float
+    ecart_min_passages_m: float
+    fusion_ravitos_m: float
+    mots_cles: dict[str, list[str]]
+
+
+@dataclass(frozen=True)
 class SegmentsConfig:
     longueur_m: float
 
@@ -45,6 +59,8 @@ class NutritionConfig:
 @dataclass(frozen=True)
 class Config:
     gpx: GpxConfig
+    course: CourseConfig
+    waypoints: WaypointsConfig
     segments: SegmentsConfig
     pacing: PacingConfig
     nutrition: NutritionConfig
@@ -57,6 +73,8 @@ def charger_config(chemin: str | Path | None = None) -> Config:
         brut = yaml.safe_load(f)
     return Config(
         gpx=GpxConfig(**brut["gpx"]),
+        course=CourseConfig(**brut["course"]),
+        waypoints=WaypointsConfig(**brut["waypoints"]),
         segments=SegmentsConfig(**brut["segments"]),
         pacing=PacingConfig(**brut["pacing"]),
         nutrition=NutritionConfig(**brut["nutrition"]),

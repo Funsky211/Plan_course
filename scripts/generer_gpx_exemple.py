@@ -1,4 +1,4 @@
-"""Génère data/exemple.gpx : un trail synthétique d'environ 15 km et 800 m D+.
+"""Génère data/exemple.gpx : un trail synthétique d'environ 15 km et 760 m D+, avec POI.
 
 Usage : python scripts/generer_gpx_exemple.py
 """
@@ -30,8 +30,19 @@ def profil_exemple() -> tuple[np.ndarray, np.ndarray]:
     return d, alt
 
 
+# Points d'intérêt : (distance en m, nom, description), interprétés par mots-clés
+POI_EXEMPLE = [
+    (5_000, "Col de la Croix", "Ravitaillement complet"),
+    (8_000, "Fontaine du Vallon", "Point d'eau"),
+    (9_500, "Sommet du Grand Pic", ""),
+    (12_000, "Ravito final", "Barrière horaire 10h30"),
+]
+
+
 if __name__ == "__main__":
     distances, altitudes = profil_exemple()
     SORTIE.parent.mkdir(exist_ok=True)
-    SORTIE.write_text(gpx_depuis_profil(distances, altitudes), encoding="utf-8")
+    SORTIE.write_text(
+        gpx_depuis_profil(distances, altitudes, waypoints=POI_EXEMPLE), encoding="utf-8"
+    )
     print(f"Écrit : {SORTIE}")

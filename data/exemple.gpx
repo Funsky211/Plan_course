@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="gpx.py -- https://github.com/tkrajina/gpxpy">
+  <wpt lat="45.044966080295936" lon="6.0">
+    <name>Col de la Croix</name>
+    <desc>Ravitaillement complet</desc>
+  </wpt>
+  <wpt lat="45.0719457284735" lon="6.0">
+    <name>Fontaine du Vallon</name>
+    <desc>Point d'eau</desc>
+  </wpt>
+  <wpt lat="45.08543555256228" lon="6.0">
+    <name>Sommet du Grand Pic</name>
+  </wpt>
+  <wpt lat="45.10791859271025" lon="6.0">
+    <name>Ravito final</name>
+    <desc>Barrière horaire 10h30</desc>
+  </wpt>
   <trk>
     <name>synthetique</name>
     <trkseg>

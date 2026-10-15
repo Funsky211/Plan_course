@@ -7,6 +7,23 @@ gpx:
   lissage_ordre: 2                # ordre du polynôme Savitzky-Golay
   distance_min_km: 1.0            # en dessous, la trace est refusée
 
+course:
+  ravitos_km: []                  # ravitos officiels, en plus de ceux lus dans le GPX (ex. [5.2, 10])
+  barrieres: []                   # ex. [{km: 12.5, limite: "2:30"}], limite = temps écoulé depuis le départ
+
+waypoints:
+  distance_max_trace_m: 150       # un POI plus loin que ça de la trace est ignoré
+  ecart_min_passages_m: 1000      # deux passages au même POI doivent être séparés d'au moins X m
+  fusion_ravitos_m: 300           # deux ravitos plus proches que ça = le même (GPX + saisie)
+  mots_cles:                      # mot entier, sans casse ni accents ; un POI peut avoir plusieurs catégories
+    ravito: [ravito, ravitaillement, aid station, aid, food, buffet, refreshment]
+    eau: [point d'eau, eau potable, fontaine, source, water, drinking water, liquide]
+    barriere: [barriere, barriere horaire, cutoff, cut-off, cut off, time limit, limite horaire]
+    sommet: [sommet, summit, pic, peak, point culminant]
+    col: [col, pass]
+    depart: [depart, start]
+    arrivee: [arrivee, finish]
+
 segments:
   longueur_m: 150                 # longueur cible d'un segment (100 à 200 m)
 
