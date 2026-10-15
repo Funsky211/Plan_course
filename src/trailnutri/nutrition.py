@@ -228,13 +228,32 @@ class _Terrain:
         return score, raison
 
 
+# Export avec fenêtres : (colonne du plan, en-tête du CSV)
+COLONNES_CSV_FENETRES = [
+    ("km_min", "km_min"), ("km", "km_ideal"), ("km_max", "km_max"),
+    ("heure_min", "heure_min"), ("heure_max", "heure_max"), ("glucides_g", "g_glucides"),
+    ("niveau", "niveau_difficulte"), ("eau_ml", "eau_ml"), ("sodium_mg", "sodium_mg"),
+    ("raison", "raison"),
+]
+
+
 def exporter_csv(plan: pd.DataFrame) -> str:
-    """CSV lisible directement par un Excel français (séparateur ';', décimale ',')."""
-    colonnes = ["heure", "km", "d_plus_cumul_m", "glucides_g", "eau_ml", "sodium_mg", "raison"]
-    colonnes = [c for c in colonnes if c in plan]
-    return plan[colonnes].round({"km": 2, "d_plus_cumul_m": 0, "glucides_g": 1}).to_csv(
-        index=False, sep=";", decimal=","
-    )
+    """CSV lisible directement par un Excel français (séparateur ';', décimale ',').
+
+    Si le plan a des fenêtres (fenetres.ajouter_fenetres) : km_min, km_ideal, km_max,
+    heure_min, heure_max, g_glucides, niveau_difficulte, eau_ml, sodium_mg, raison.
+    """
+    if "km_min" in plan:
+        paires = [(c, nom) for c, nom in COLONNES_CSV_FENETRES if c in plan]
+        export = plan[[c for c, _ in paires]].rename(columns=dict(paires))
+        export = export.round({"km_min": 2, "km_ideal": 2, "km_max": 2})
+    else:
+        colonnes = ["heure", "km", "d_plus_cumul_m", "glucides_g", "eau_ml", "sodium_mg",
+                    "raison"]
+        export = plan[[c for c in colonnes if c in plan]].round(
+            {"km": 2, "d_plus_cumul_m": 0, "glucides_g": 1}
+        )
+    return export.to_csv(index=False, sep=";", decimal=",")
 
 
 def _bornes(segments: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

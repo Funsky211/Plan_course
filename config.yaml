@@ -104,3 +104,5 @@ decalage:                         # déplacement de chaque prise dans une fenêt
   penalite_montee_dure: 1.0       # éviter le milieu d'une montée dure
   penalite_descente_technique: 2.0  # éviter les descentes techniques
   penalite_par_min_decalage: 0.05 # à score égal, rester proche de l'horaire de base
+  resserrement_difficulte: 1.0    # fenêtre de prise x (1 - X x score) : plus étroite si dur
+  arrondi_km: 0.5                 # affichage des fenêtres : « km 12 – 13 » arrondi à 0.5 km

@@ -149,6 +149,9 @@ class DecalageConfig:
     penalite_montee_dure: float
     penalite_descente_technique: float
     penalite_par_min_decalage: float
+    # Fenêtre affichée autour de chaque prise (valeurs par défaut : compatibilité)
+    resserrement_difficulte: float = 1.0
+    arrondi_km: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -223,6 +226,8 @@ def valider(cfg: Config) -> None:
         (cfg.nutrition.montee_en_charge_min >= 0, "nutrition.montee_en_charge_min doit être >= 0"),
         (cfg.decalage.fenetre_min >= 0 and cfg.decalage.pas_min > 0,
          "decalage : fenetre_min >= 0 et pas_min > 0"),
+        (0 <= cfg.decalage.resserrement_difficulte <= 1 and cfg.decalage.arrondi_km > 0,
+         "decalage : resserrement_difficulte dans [0, 1] et arrondi_km > 0"),
         (0 < cfg.hydratation.ml_h_min <= cfg.hydratation.ml_h_max,
          "hydratation : 0 < ml_h_min <= ml_h_max"),
         (cfg.waypoints.distance_max_trace_m > 0, "waypoints.distance_max_trace_m doit être > 0"),

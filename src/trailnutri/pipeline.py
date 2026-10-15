@@ -12,6 +12,7 @@ import pandas as pd
 
 from trailnutri.config import Config
 from trailnutri.difficulty import calculer_difficulte, zones
+from trailnutri.fenetres import ajouter_fenetres
 from trailnutri.nutrition import plan_glucides
 from trailnutri.pacing import calculer_temps, verifier_barrieres
 from trailnutri.segments import decouper_segments
@@ -74,6 +75,7 @@ def planifier(
         ravitos=ravitos,
         hydratation=cfg.hydratation,
     )
+    plan = ajouter_fenetres(plan, segments, cfg.nutrition, cfg.decalage, ravitos, heure_depart)
     return Resultat(
         segments=segments,
         plan=plan,
