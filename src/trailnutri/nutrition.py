@@ -4,15 +4,13 @@ Décalage : chaque prise peut bouger dans une fenêtre ± X min. Chaque instant 
 un score (bonus ravito, avant montée, terrain facile ; pénalités montée dure, descente
 technique, éloignement de l'horaire) et on garde le meilleur.
 
-Quantités : g/h avec montée en charge en début de course, traduits en produits (gel, barre...),
-plus l'eau et le sodium à boire depuis la prise précédente.
+Quantités : glucides en grammes (g/h avec montée en charge en début de course), plus l'eau et
+le sodium à boire depuis la prise précédente. Le coureur choisit lui-même ses produits.
 """
 
 from __future__ import annotations
 
-from collections import Counter
 from datetime import time
-from itertools import combinations_with_replacement
 
 import numpy as np
 import pandas as pd
@@ -41,9 +39,8 @@ def plan_glucides(
 
     Sans `decalage` : une prise toutes les `cfg.intervalle_min` minutes.
     Avec `decalage` : prises déplacées selon le terrain et les ravitos.
-    Colonnes : temps_s, decalage_min, heure, km, d_plus_cumul_m, glucides_cible_g,
-    unites (tuple de produits), a_prendre, glucides_g, raison ; plus eau_ml et sodium_mg
-    si `hydratation` est fourni.
+    Colonnes : temps_s, decalage_min, heure, km, d_plus_cumul_m, glucides_g, raison ;
+    plus eau_ml et sodium_mg si `hydratation` est fourni.
     """
     _verifier(cfg)
     instants_base = horaire_base(segments["temps_fin_s"].iloc[-1], cfg)
@@ -62,8 +59,9 @@ def plan_glucides(
 
     # Chaque prise couvre l'intervalle de base écoulé : g/h (au milieu de l'intervalle) x durée
     intervalle_h = cfg.intervalle_min / 60
-    cibles = [debit_glucides_g_h(t0 - cfg.intervalle_min * 30, cfg) * intervalle_h for t0 in bases]
-    choix = [choisir_produits(c, cfg.produits, cfg.max_unites_par_prise) for c in cibles]
+    glucides = [
+        round(debit_glucides_g_h(t0 - cfg.intervalle_min * 30, cfg) * intervalle_h) for t0 in bases
+    ]
 
     plan = pd.DataFrame(
         {
@@ -72,10 +70,7 @@ def plan_glucides(
             "heure": [formater_heure(t, heure_depart) for t in instants_arr],
             "km": np.interp(instants_arr, temps_bornes, distance_bornes) / 1000,
             "d_plus_cumul_m": np.interp(instants_arr, temps_bornes, d_plus_bornes),
-            "glucides_cible_g": cibles,
-            "unites": [unites for unites, _ in choix],
-            "a_prendre": [_decrire(unites, g) for unites, g in choix],
-            "glucides_g": [g for _, g in choix],
+            "glucides_g": glucides,
             "raison": raisons,
         }
     )
@@ -100,30 +95,9 @@ def debit_eau_ml_h(cfg: HydratationConfig) -> float:
     return float(np.clip(ml_h, cfg.ml_h_min, cfg.ml_h_max))
 
 
-def choisir_produits(
-    cible_g: float, produits: dict[str, float], max_unites: int
-) -> tuple[tuple[str, ...], float]:
-    """Combinaison de produits (au plus max_unites) la plus proche de la cible en glucides.
-
-    À écart égal, le moins d'unités. Sans catalogue : la cible brute, sans produit.
-    """
-    if not produits:
-        return (), cible_g
-    meilleur: tuple[tuple[str, ...], float] = ((), 0.0)
-    meilleur_cle = (cible_g, 0)  # "ne rien prendre" : écart = la cible entière
-    for n in range(1, max_unites + 1):
-        for combinaison in combinations_with_replacement(produits, n):
-            total = sum(produits[nom] for nom in combinaison)
-            cle = (abs(total - cible_g), n)
-            if cle < meilleur_cle:
-                meilleur, meilleur_cle = (combinaison, total), cle
-    return meilleur
-
-
-def liste_courses(plan: pd.DataFrame) -> pd.DataFrame:
-    """Ce qu'il faut prévoir pour toute la course : produits, eau et sodium."""
-    compte = Counter(nom for unites in plan["unites"] for nom in unites)
-    lignes = [{"article": nom, "quantite": n, "unite": "unité(s)"} for nom, n in compte.items()]
+def total_a_prevoir(plan: pd.DataFrame) -> pd.DataFrame:
+    """Ce qu'il faut prévoir pour toute la course : glucides, eau et sodium."""
+    lignes = [{"article": "Glucides", "quantite": int(plan["glucides_g"].sum()), "unite": "g"}]
     if "eau_ml" in plan:
         lignes.append(
             {"article": "Eau", "quantite": round(plan["eau_ml"].sum() / 1000, 1), "unite": "L"}
@@ -256,19 +230,11 @@ class _Terrain:
 
 def exporter_csv(plan: pd.DataFrame) -> str:
     """CSV lisible directement par un Excel français (séparateur ';', décimale ',')."""
-    colonnes = ["heure", "km", "d_plus_cumul_m", "a_prendre", "glucides_g", "eau_ml",
-                "sodium_mg", "raison"]
+    colonnes = ["heure", "km", "d_plus_cumul_m", "glucides_g", "eau_ml", "sodium_mg", "raison"]
     colonnes = [c for c in colonnes if c in plan]
     return plan[colonnes].round({"km": 2, "d_plus_cumul_m": 0, "glucides_g": 1}).to_csv(
         index=False, sep=";", decimal=","
     )
-
-
-def _decrire(unites: tuple[str, ...], glucides_g: float) -> str:
-    """('Gel', 'Gel') -> '2 Gel' ; ('Gel', 'Barre') -> '1 Gel + 1 Barre' ; () -> '25 g ...'."""
-    if not unites:
-        return f"{glucides_g:.0f} g de glucides"
-    return " + ".join(f"{n} {nom}" for nom, n in Counter(unites).items())
 
 
 def _bornes(segments: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -291,5 +257,3 @@ def _verifier(cfg: NutritionConfig) -> None:
         raise NutritionError("L'intervalle entre prises doit être strictement positif.")
     if cfg.delai_premiere_prise_min < 0:
         raise NutritionError("Le délai avant la première prise ne peut pas être négatif.")
-    if any(g <= 0 for g in cfg.produits.values()):
-        raise NutritionError("Chaque produit doit apporter une quantité de glucides positive.")

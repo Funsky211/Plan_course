@@ -93,8 +93,6 @@ class NutritionConfig:
     delai_premiere_prise_min: float
     fraction_depart: float
     montee_en_charge_min: float
-    max_unites_par_prise: int
-    produits: dict[str, float]
 
 
 @dataclass(frozen=True)
@@ -187,9 +185,6 @@ def valider(cfg: Config) -> None:
         (cfg.nutrition.intervalle_min > 0, "nutrition.intervalle_min doit être > 0"),
         (0 < cfg.nutrition.fraction_depart <= 1, "nutrition.fraction_depart dans ]0, 1]"),
         (cfg.nutrition.montee_en_charge_min >= 0, "nutrition.montee_en_charge_min doit être >= 0"),
-        (cfg.nutrition.max_unites_par_prise >= 1, "nutrition.max_unites_par_prise doit être >= 1"),
-        (all(g > 0 for g in cfg.nutrition.produits.values()),
-         "nutrition.produits : glucides par unité > 0"),
         (cfg.decalage.fenetre_min >= 0 and cfg.decalage.pas_min > 0,
          "decalage : fenetre_min >= 0 et pas_min > 0"),
         (0 < cfg.hydratation.ml_h_min <= cfg.hydratation.ml_h_max,

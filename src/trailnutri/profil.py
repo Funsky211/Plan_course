@@ -7,6 +7,9 @@ from dataclasses import asdict, dataclass, fields, replace
 
 from trailnutri.config import Config
 
+# Clés de profils enregistrés par d'anciennes versions, ignorées à la lecture
+CLES_OBSOLETES = ("produits",)
+
 
 class ProfilError(ValueError):
     """Fichier de profil invalide."""
@@ -19,7 +22,6 @@ class ProfilAthlete:
     glucides_g_h: int
     intervalle_min: int
     delai_premiere_prise_min: int
-    produits: list[str]            # produits du catalogue que l'athlète utilise
     temperature_c: int
 
     @classmethod
@@ -30,13 +32,11 @@ class ProfilAthlete:
             glucides_g_h=int(cfg.nutrition.glucides_g_h),
             intervalle_min=int(cfg.nutrition.intervalle_min),
             delai_premiere_prise_min=int(cfg.nutrition.delai_premiere_prise_min),
-            produits=list(cfg.nutrition.produits),
             temperature_c=int(cfg.hydratation.temperature_c),
         )
 
     def appliquer(self, cfg: Config) -> Config:
         """Config surchargée par le profil (la config d'origine n'est pas modifiée)."""
-        produits = {nom: g for nom, g in cfg.nutrition.produits.items() if nom in self.produits}
         return replace(
             cfg,
             pacing=replace(
@@ -49,7 +49,6 @@ class ProfilAthlete:
                 glucides_g_h=self.glucides_g_h,
                 intervalle_min=self.intervalle_min,
                 delai_premiere_prise_min=self.delai_premiere_prise_min,
-                produits=produits,
             ),
             hydratation=replace(cfg.hydratation, temperature_c=self.temperature_c),
         )
@@ -59,13 +58,18 @@ class ProfilAthlete:
 
     @classmethod
     def depuis_json(cls, texte: str) -> ProfilAthlete:
-        """Lit un profil ; refuse les clés manquantes/inconnues et les types incorrects."""
+        """Lit un profil ; refuse les clés manquantes/inconnues et les types incorrects.
+
+        Les clés d'anciennes versions (CLES_OBSOLETES) sont ignorées.
+        """
         try:
             brut = json.loads(texte)
         except json.JSONDecodeError as erreur:
             raise ProfilError(f"Profil illisible (JSON invalide) : {erreur}") from erreur
         if not isinstance(brut, dict):
             raise ProfilError("Profil invalide : un objet JSON est attendu.")
+        for cle in CLES_OBSOLETES:
+            brut.pop(cle, None)
 
         attendus = {f.name: f.type for f in fields(cls)}
         manquants = attendus.keys() - brut.keys()
@@ -79,10 +83,7 @@ class ProfilAthlete:
         valeurs = {}
         for nom, type_ in attendus.items():
             valeur = brut[nom]
-            if type_ == "list[str]":
-                if not isinstance(valeur, list) or not all(isinstance(v, str) for v in valeur):
-                    raise ProfilError(f"'{nom}' doit être une liste de noms de produits.")
-            elif not isinstance(valeur, (int, float)) or isinstance(valeur, bool):
+            if not isinstance(valeur, (int, float)) or isinstance(valeur, bool):
                 raise ProfilError(f"'{nom}' doit être un nombre.")
             else:
                 valeur = int(valeur) if type_ == "int" else float(valeur)

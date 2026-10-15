@@ -63,9 +63,9 @@ def profil_altimetrique(
                     "size": 11,
                     "line": {"color": "white", "width": 2},  # anneau pour détacher du profil
                 },
-                customdata=plan[["heure", "a_prendre", "d_plus_cumul_m", "raison"]],
+                customdata=plan[["heure", "glucides_g", "d_plus_cumul_m", "raison"]],
                 hovertemplate=(
-                    "<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
+                    "<b>%{customdata[0]}</b> · %{customdata[1]:.0f} g de glucides<br>"
                     "km %{x:.2f} · D+ %{customdata[2]:.0f} m<br>"
                     "%{customdata[3]}<extra></extra>"
                 ),

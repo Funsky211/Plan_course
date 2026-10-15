@@ -7,12 +7,11 @@ import pytest
 
 from trailnutri.nutrition import (
     NutritionError,
-    choisir_produits,
     debit_eau_ml_h,
     debit_glucides_g_h,
     exporter_csv,
-    liste_courses,
     plan_glucides,
+    total_a_prevoir,
 )
 from trailnutri.waypoints import Ravito
 
@@ -30,8 +29,8 @@ def segments_temps(duree_totale_s: float, nb: int = 10, longueur: float = 1_000)
 
 
 def fixe(cfg, **modif):
-    """Nutrition "brute" : sans montée en charge ni catalogue de produits (grammes exacts)."""
-    return replace(cfg.nutrition, **{"montee_en_charge_min": 0, "produits": {}, **modif})
+    """Nutrition "brute" : sans montée en charge (même quantité à chaque prise)."""
+    return replace(cfg.nutrition, **{"montee_en_charge_min": 0, **modif})
 
 
 def test_horaires_et_quantites(cfg):
@@ -91,11 +90,11 @@ def test_parametres_invalides(cfg, modif):
 def test_export_csv(cfg):
     csv = exporter_csv(plan_glucides(segments_temps(100 * 60), fixe(cfg)))
     lignes = csv.strip().splitlines()
-    assert lignes[0] == "heure;km;d_plus_cumul_m;a_prendre;glucides_g;raison"
-    assert lignes[1] == "0:25;2,5;25,0;25 g de glucides;25,0;intervalle fixe"
+    assert lignes[0] == "heure;km;d_plus_cumul_m;glucides_g;raison"
+    assert lignes[1] == "0:25;2,5;25,0;25;intervalle fixe"
 
 
-# --- Quantités : montée en charge, produits, hydratation ------------------------------------
+# --- Quantités : montée en charge, hydratation, totaux ---------------------------------------
 
 def test_montee_en_charge(cfg):
     # 70 % de 60 g/h au départ, 60 g/h à partir de 60 min
@@ -105,30 +104,13 @@ def test_montee_en_charge(cfg):
     assert debit_glucides_g_h(0, fixe(cfg)) == 60
 
 
-def test_cibles_croissantes_puis_stables(cfg):
-    plan = plan_glucides(segments_temps(3 * 3600), replace(cfg.nutrition, produits={}))
-    cibles = plan["glucides_cible_g"].to_numpy()
-    assert (np.diff(cibles) >= 0).all()
-    assert cibles[-1] == pytest.approx(25)  # 60 g/h x 25 min
-    assert cibles[0] < 25
-
-
-@pytest.mark.parametrize(
-    "cible, unites, total",
-    [
-        (25, ("Gel",), 25),
-        (19, ("Pâte de fruits",), 20),
-        (45, ("Gel", "Pâte de fruits"), 45),
-        (50, ("Gel", "Gel"), 50),
-        (38, ("Barre",), 40),  # à écart égal (2 g), 1 Barre plutôt que 2 Pâtes de fruits
-    ],
-)
-def test_choisir_produits(cfg, cible, unites, total):
-    assert choisir_produits(cible, cfg.nutrition.produits, 2) == (unites, total)
-
-
-def test_choisir_produits_sans_catalogue():
-    assert choisir_produits(27.5, {}, 2) == ((), 27.5)
+def test_quantites_croissantes_puis_stables(cfg):
+    plan = plan_glucides(segments_temps(3 * 3600), cfg.nutrition)
+    glucides = plan["glucides_g"].to_numpy()
+    assert (np.diff(glucides) >= 0).all()
+    assert glucides[-1] == 25  # 60 g/h x 25 min
+    assert glucides[0] < 25
+    assert all(float(g).is_integer() for g in glucides)  # grammes entiers
 
 
 def test_hydratation(cfg):
@@ -144,18 +126,17 @@ def test_hydratation(cfg):
     assert (plan["sodium_mg"] == 105).all()
 
 
-def test_liste_courses(cfg):
-    plan = plan_glucides(segments_temps(2 * 3600), fixe(cfg, produits={"Gel": 25}),
-                         hydratation=cfg.hydratation)
-    liste = liste_courses(plan).set_index("article")
-    assert liste.loc["Gel", "quantite"] == 4
-    assert liste.loc["Eau", "quantite"] == pytest.approx(0.8)
-    assert liste.loc["Sodium", "quantite"] == 420
+def test_total_a_prevoir(cfg):
+    plan = plan_glucides(segments_temps(2 * 3600), fixe(cfg), hydratation=cfg.hydratation)
+    total = total_a_prevoir(plan).set_index("article")
+    assert total.loc["Glucides", "quantite"] == 100  # 4 prises de 25 g
+    assert total.loc["Eau", "quantite"] == pytest.approx(0.8)
+    assert total.loc["Sodium", "quantite"] == 420
 
 
-def test_produit_invalide(cfg):
-    with pytest.raises(NutritionError):
-        plan_glucides(segments_temps(3600), replace(cfg.nutrition, produits={"Gel": 0}))
+def test_total_sans_hydratation(cfg):
+    total = total_a_prevoir(plan_glucides(segments_temps(2 * 3600), fixe(cfg)))
+    assert list(total["article"]) == ["Glucides"]
 
 
 # --- Décalage des prises -------------------------------------------------------------------

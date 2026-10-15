@@ -18,7 +18,7 @@ def test_config_par_defaut_valide(cfg):
         ("difficulte", {"seuil_zone_dure": 2}, "seuil_zone_dure"),
         ("difficulte", {"creux_debut_h": 5}, "creux_debut_h"),
         ("nutrition", {"glucides_g_h": 150}, "glucides_g_h"),
-        ("nutrition", {"produits": {"Gel": -1}}, "produits"),
+        ("nutrition", {"fraction_depart": 0}, "fraction_depart"),
         ("hydratation", {"ml_h_min": 1000}, "ml_h_min"),
     ],
 )

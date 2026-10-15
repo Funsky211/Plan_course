@@ -13,7 +13,7 @@ import streamlit as st
 from trailnutri.calibration import CalibrationError, calibrer
 from trailnutri.config import charger_config
 from trailnutri.gpx_loader import GpxError, construire_trace, denivele, lire_gpx
-from trailnutri.nutrition import NutritionError, exporter_csv, liste_courses
+from trailnutri.nutrition import NutritionError, exporter_csv, total_a_prevoir
 from trailnutri.pacing import PacingError, allure_plate, passages_par_km, temps_au_km
 from trailnutri.pipeline import Resultat, planifier, rassembler_points
 from trailnutri.plot import graphique_allure, profil_altimetrique
@@ -50,11 +50,7 @@ def ajuster_au_curseur(nom: str, valeur: float) -> float:
 def ecrire_profil(profil: ProfilAthlete) -> None:
     """Pousse un profil dans les curseurs, en respectant leurs bornes et types."""
     for nom, valeur in asdict(profil).items():
-        if nom in CURSEURS:
-            valeur = ajuster_au_curseur(nom, valeur)
-        elif nom == "produits":
-            valeur = [p for p in valeur if p in CFG.nutrition.produits]
-        st.session_state[nom] = valeur
+        st.session_state[nom] = ajuster_au_curseur(nom, valeur)
 
 
 def lire_profil() -> ProfilAthlete:
@@ -123,9 +119,6 @@ with st.sidebar:
     ]:
         mini, maxi, pas = CURSEURS[nom]
         st.slider(libelle, mini, maxi, step=pas, key=nom, help=aide)
-    st.multiselect("Produits utilisés", list(CFG.nutrition.produits), key="produits",
-                   help="Glucides par unité : " + ", ".join(
-                       f"{n} {g:g} g" for n, g in CFG.nutrition.produits.items()))
 
     st.subheader("Profil")
     st.download_button("Enregistrer le profil (JSON)", lire_profil().vers_json(),
@@ -185,15 +178,14 @@ with onglets[0]:
     )
     st.subheader("Prises")
     st.dataframe(
-        res.plan[["heure", "km", "d_plus_cumul_m", "a_prendre", "glucides_g", "eau_ml",
-                  "sodium_mg", "raison"]],
+        res.plan[["heure", "km", "d_plus_cumul_m", "glucides_g", "eau_ml", "sodium_mg",
+                  "raison"]],
         hide_index=True,
         use_container_width=True,
         column_config={
             "heure": "Heure",
             "km": st.column_config.NumberColumn("Km", format="%.2f"),
             "d_plus_cumul_m": st.column_config.NumberColumn("D+ cumulé (m)", format="%.0f"),
-            "a_prendre": "À prendre",
             "glucides_g": st.column_config.NumberColumn("Glucides (g)", format="%.0f"),
             "eau_ml": st.column_config.NumberColumn("Eau (ml)", format="%.0f"),
             "sodium_mg": st.column_config.NumberColumn("Sodium (mg)", format="%.0f"),
@@ -205,8 +197,8 @@ with onglets[0]:
 
     gauche, droite = st.columns(2)
     with gauche:
-        st.subheader("À emporter")
-        st.dataframe(liste_courses(res.plan), hide_index=True, use_container_width=True)
+        st.subheader("Total à prévoir")
+        st.dataframe(total_a_prevoir(res.plan), hide_index=True, use_container_width=True)
     with droite:
         st.subheader("Barrières horaires")
         if res.barrieres.empty:

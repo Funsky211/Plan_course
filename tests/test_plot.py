@@ -25,7 +25,6 @@ def test_marqueurs_poses_sur_le_profil(trace):
             "heure": ["0:25", "0:50"],
             "km": [1.0, 3.0],
             "d_plus_cumul_m": [50.0, 150.0],
-            "a_prendre": ["1 Gel", "1 Gel"],
             "glucides_g": [25.0, 25.0],
             "raison": ["intervalle fixe"] * 2,
         }
@@ -37,7 +36,7 @@ def test_marqueurs_poses_sur_le_profil(trace):
 
 
 def test_plan_vide_ignore(trace):
-    plan = pd.DataFrame(columns=["heure", "km", "d_plus_cumul_m", "a_prendre", "raison"])
+    plan = pd.DataFrame(columns=["heure", "km", "d_plus_cumul_m", "glucides_g", "raison"])
     assert len(profil_altimetrique(trace, plan).data) == 1
 
 

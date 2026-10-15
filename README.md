@@ -2,7 +2,7 @@
 
 Planificateur de nutrition pour trail / course à pied : à partir d'un GPX et d'un temps cible,
 produit un découpage en segments notés en difficulté, des temps de passage, et un plan de
-ravitaillement (quand, où, quoi prendre, pourquoi à ce moment-là).
+ravitaillement (quand, où, combien de glucides, d'eau et de sodium, pourquoi à ce moment-là).
 
 > **Avertissement** : outil d'aide à la planification uniquement. Ce n'est **ni un conseil
 > médical, ni un conseil diététique**. Les quantités (glucides, eau, sodium) sont des valeurs
@@ -30,7 +30,7 @@ point d'eau et barrière horaire). Onglets :
 
 | Onglet | Contenu |
 |---|---|
-| Plan | profil annoté (prises, zones dures, ravitos), tableau des prises, CSV, liste à emporter, barrières |
+| Plan | profil annoté (prises, zones dures, ravitos), tableau des prises, CSV, total à prévoir, barrières |
 | Allure & passages | allure prévue le long du parcours (segments en marche marqués), temps de passage à chaque km |
 | Difficulté | score par segment et détail des 6 facteurs |
 | Points d'intérêt | POI lus dans le GPX et leur interprétation |
@@ -69,7 +69,8 @@ La CI GitHub Actions (`.github/workflows/ci.yml`) lance ruff et pytest à chaque
 6. `nutrition` : horaire de base (une prise toutes les X min, montée en charge en début de
    course), puis décalage de chaque prise dans une fenêtre ± X min vers le meilleur créneau
    (ravito, juste avant une montée dure, terrain roulant ; jamais en descente technique),
-   traduction en produits (gel, barre...), eau et sodium selon la température. Export CSV.
+   quantités en grammes (chacun choisit ses produits), eau et sodium selon la température.
+   Export CSV.
 7. `calibration` : à partir de GPX horodatés, mesure de l'allure à plat, de la dérive de
    fatigue et du plancher de descente (pauses ignorées).
 8. `pipeline` : enchaîne le tout ; `plot` : graphiques plotly.

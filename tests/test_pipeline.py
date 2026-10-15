@@ -1,5 +1,6 @@
 """Bout en bout sur la trace d'exemple, et profil athlète."""
 
+import json
 from dataclasses import replace
 from datetime import time
 from pathlib import Path
@@ -63,16 +64,14 @@ def test_barriere_ratee(cfg, exemple):
 # --- Profil athlète ------------------------------------------------------------------------
 
 def test_profil_aller_retour(cfg):
-    profil = replace(ProfilAthlete.depuis_config(cfg), glucides_g_h=80, produits=["Gel"])
+    profil = replace(ProfilAthlete.depuis_config(cfg), glucides_g_h=80)
     assert ProfilAthlete.depuis_json(profil.vers_json()) == profil
 
 
 def test_profil_applique(cfg):
-    profil = replace(ProfilAthlete.depuis_config(cfg), derive_fatigue=0.1, produits=["Barre"],
-                     temperature_c=28)
+    profil = replace(ProfilAthlete.depuis_config(cfg), derive_fatigue=0.1, temperature_c=28)
     applique = profil.appliquer(cfg)
     assert applique.pacing.derive_fatigue == 0.1
-    assert applique.nutrition.produits == {"Barre": 40}
     assert applique.hydratation.temperature_c == 28
     assert cfg.pacing.derive_fatigue == 0.0  # la config d'origine est intacte
 
@@ -88,6 +87,13 @@ def test_profil_applique(cfg):
 def test_profil_invalide(texte, message):
     with pytest.raises(ProfilError, match=message):
         ProfilAthlete.depuis_json(texte)
+
+
+def test_profil_ancien_avec_produits(cfg):
+    # Profil enregistré par une version qui gérait des produits : la clé est ignorée
+    ancien = json.loads(ProfilAthlete.depuis_config(cfg).vers_json())
+    ancien["produits"] = ["Gel", "Barre"]
+    assert ProfilAthlete.depuis_json(json.dumps(ancien)) == ProfilAthlete.depuis_config(cfg)
 
 
 def test_profil_mauvais_types(cfg):

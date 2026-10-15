@@ -74,11 +74,6 @@ nutrition:
   delai_premiere_prise_min: 15    # aucune prise avant ce délai
   fraction_depart: 0.7            # montée en charge : on démarre à 70 % de la cible g/h...
   montee_en_charge_min: 60        # ...et on l'atteint après X min (0 = désactivé)
-  max_unites_par_prise: 2         # au plus X produits avalés à la même prise
-  produits:                       # glucides par unité ; chaque prise prend la combinaison la plus proche
-    Gel: 25
-    Barre: 40
-    Pâte de fruits: 20
 
 hydratation:
   temperature_c: 15               # température prévue (modifiable dans l'interface)
