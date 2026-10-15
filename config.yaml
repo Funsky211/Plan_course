@@ -34,6 +34,9 @@ pacing:
   derive_fatigue: 0.0             # 0.10 = segments 10 % plus lents en fin de course qu'au départ
   allure_plate_min_s_km: 150      # 2:30 min/km : en dessous, temps cible jugé irréaliste
   allure_plate_max_s_km: 1200     # 20:00 min/km : au-dessus, temps cible jugé irréaliste
+  pente_marche: 0.15              # au-dessus, segment annoté "marche" (rando-course)
+  arret_ravito_s: 120             # arrêt à chaque ravito complet (compris dans le temps cible)
+  arret_eau_s: 30                 # arrêt à chaque point d'eau
 
 difficulte:
   poids:                          # somme pondérée, renormalisée pour rester entre 0 et 1

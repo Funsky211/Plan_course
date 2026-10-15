@@ -46,6 +46,9 @@ class PacingConfig:
     derive_fatigue: float
     allure_plate_min_s_km: float
     allure_plate_max_s_km: float
+    pente_marche: float
+    arret_ravito_s: float
+    arret_eau_s: float
 
 
 @dataclass(frozen=True)
